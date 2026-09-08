@@ -1,0 +1,2826 @@
+<!--
+===============================================================================
+ SVE 一人回しツール v46 スマホ＋DECK LOG・エボルヴ修正版  学習・開発版
+===============================================================================
+
+【このファイルの目的】
+通常版 v19 と同じ動作を保ったまま、HTML / CSS / JavaScript を学びやすいように、
+主要なモジュール・関数・イベント処理へ日本語コメントを追加した版です。
+
+【大きな構成】
+  1. STYLE領域 : CSS。画面の見た目、カードサイズ、場/EX/手札、モーダルなど。
+  2. BODY領域  : HTML。ボタン、プレイヤー領域、デッキ登録領域などの画面構造。
+  3. SCRIPT領域: JavaScript。カード移動、ターン、OCR、エボルヴ、TXT入出力など。
+
+【JavaScriptを読むおすすめ順】
+  A. 状態管理
+     - const G
+     - 
+/**
+ * プレイヤー1人分の初期状態を作る。
+ * deck=山札、hand=手札、field=場、ex=EX、grave=墓場、banish=消滅。
+ * used は「現在場で使用中のエボルヴカード」を保持する領域としても使われる。
+ */
+function P()
+     - 
+/**
+ * デッキ登録用カードデータを作る。
+ * image=画像URL、type=normal/evolve/token、count=登録枚数。
+ */
+function dc()
+     - 
+/**
+ * 登録カードから「対戦中の実カード」を1枚生成する。
+ * 同じカードが複数枚あっても識別できるよう、新しい runtime ID を付ける。
+ * Power/ToughnessやAct状態など、対戦中だけ必要な値もここで初期化する。
+ */
+function rc()
+
+  B. 画面描画
+     - render()
+     - list()
+     - cards()
+     - deckCards()
+
+  C. 基本操作
+     - draw()
+     - topToBottom()
+     - topToGrave()
+     - shuffle()
+     - mulligan()
+
+  D. カード移動
+     - moveCard()
+     - returnEvo()
+     - Drag & Drop のイベント登録
+
+  E. ステータス
+     - stat()
+     - chg()
+     - zero()
+     - read()
+
+  F. OCR
+     - getOcrWorker()
+     - ocr()
+     - image()
+     - ocrImageSource()
+
+  G. エボルヴ
+     - showEvolveList()
+     - evolveStart()
+     - chooseField()
+     - chooseEvo()
+     - doEvo()
+
+  H. デッキ登録 / TXT
+     - addCardDirect()
+     - extractDropUrl()
+     - setupDeckDrops()
+     - exportPlayer()
+     - importPlayer()
+
+【重要なデータ構造】
+  G.decks[p]  : 登録したデッキ情報
+                main / evolve / token
+
+  G.p[p]      : 対戦中のプレイヤー状態
+                deck / hand / field / ex / grave / banish / used
+                turn / PP / EP / SEP / life など
+
+  p           : プレイヤー番号。0 = Player 1、1 = Player 2
+
+【山札の向き】
+  対戦中の山札 G.p[p].deck は「配列の末尾が山札の一番上」です。
+  そのため、
+      deck.pop()
+  で山札の一番上を1枚取り出します。
+
+【編集時の基本手順】
+  1. VS CodeでこのHTMLを開く
+  2. 変更する
+  3. Ctrl + S で保存
+  4. Edge / Chrome に戻り F5 で再読込
+  5. 問題があれば F12 → Console を確認
+
+【コメントの見方】
+  // ------------------------------------------------------------------
+  // [モジュール名]
+  // ------------------------------------------------------------------
+  のような区切りは、大きな機能単位を示します。
+
+  各 function の直前には、
+  ・何をする関数か
+  ・重要な引数
+  ・処理上の注意点
+  をできるだけ日本語で記載しています。
+
+===============================================================================
+-->
+
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>SVE 一人回しツール v46 スマホ＋DECK LOG・エボルヴ修正版</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#fff;color:#222;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px}button,input{font:inherit}button{background:#f4f4f4;color:#222;border:1px solid #bbb;border-radius:6px;padding:6px 9px;cursor:pointer}button:hover{background:#e9e9e9}header{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 10px;background:#fafafa;border-bottom:1px solid #ccc;position:sticky;top:0;z-index:20}header h1{font-size:16px;margin:0 12px 0 0}.status{margin-left:auto;color:#666;font-size:12px}.app{display:grid;grid-template-columns:250px minmax(0,1fr) 250px;min-height:calc(100vh - 55px)}aside{padding:8px;background:#fafafa;overflow:auto}.left{border-right:1px solid #ccc}.box{background:#fff;border:1px solid #ccc;border-radius:8px;padding:8px;margin-bottom:8px}.box h2{font-size:13px;margin:0 0 7px}.help{color:#666;font-size:12px;line-height:1.5}.drop{border:2px dashed #bbb;border-radius:7px;padding:13px;text-align:center;color:#666;font-size:12px}.drop.drag{border-color:#4d91e8;background:#f3f8ff}.list{display:flex;flex-wrap:wrap;gap:5px;max-height:210px;overflow:auto}.thumb{width:48px;position:relative;cursor:pointer;border-radius:4px}.thumb img{width:48px;display:block;border-radius:3px}.thumb .n{position:absolute;right:1px;bottom:1px;background:#000c;color:#fff;padding:1px 4px;font-size:10px;border-radius:3px}.thumb.used{filter:brightness(.45)}.thumb:hover{outline:2px solid #8eb9ef}main{min-width:0;display:grid;grid-template-columns:1fr 1fr}.player{min-width:0;padding:8px;display:flex;flex-direction:column;border-right:1px solid #ccc}.player:last-child{border-right:0}.phead{display:flex;gap:5px;align-items:center;margin-bottom:6px;flex-wrap:wrap}.phead h2{font-size:14px;margin:0 4px 0 0}.res{margin-left:auto;display:flex;gap:3px;align-items:center}.res input{width:42px;background:#fff;color:#222;border:1px solid #bbb;border-radius:4px;padding:3px}.counts{display:flex;gap:5px;margin-bottom:5px;flex-wrap:wrap}.count{border:1px solid #ccc;background:#fafafa;border-radius:5px;padding:3px 8px;min-width:56px}.count b{font-size:10px;color:#777;display:block}.count span{font-size:15px}.zone-wrap{display:grid;grid-template-rows:auto auto auto;gap:0;flex:0 0 auto;min-height:0}.zone-wrap>.zone{border-radius:0;margin:0}.zone-wrap>.zone:first-child{border-radius:7px 7px 0 0}.zone-wrap>.zone:last-child{border-radius:0 0 7px 7px}.zone-wrap>.zone+.zone{border-top:0}.zone{border:1px solid #cfcfcf;border-radius:7px;background:#fff;padding:6px;min-height:82px}.zone.drag{border:2px solid #4d91e8;background:#f3f8ff}.zone-title{font-size:11px;color:#666;margin-bottom:4px}.decktoggle{cursor:pointer}.decktoggle:hover{background:#eef5ff}.deckviewer{display:none;border:1px solid #8eb9ef;background:#f8fbff;border-radius:7px;padding:6px;margin-bottom:6px}.deckviewer.show{display:block}.pileviewer{display:none;border:1px solid #bbb;background:#fff;border-radius:7px;padding:6px;margin-bottom:6px}.pileviewer.show{display:block}.deckviewer .cardrow{max-height:290px;overflow:auto}.orderbadge{position:absolute;left:2px;top:2px;z-index:9;background:#fff;color:#222;border:1px solid #aaa;border-radius:10px;padding:1px 5px;font-size:9px}.cardrow{display:flex;gap:6px;overflow:auto;min-height:74px;align-items:flex-start;flex-wrap:wrap}.fieldzone{min-height:160px;max-height:none;border-style:dashed;background:#fcfcfc}.exzone{min-height:92px;max-height:none;overflow:hidden}.exzone .cardrow{min-height:108px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden}.card{width:106px;position:relative;flex:0 0 auto;cursor:grab}.visual{position:relative;width:100%;transform-origin:center center;transition:transform .15s ease}.visual.acted{transform:rotate(90deg)}.fieldzone .visual,.exzone .visual{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;overflow:visible}.fieldzone .visual img.main,.exzone .visual img.main{width:71.6%;height:auto;flex:0 0 auto}.fieldzone .visual.acted,.exzone .visual.acted{transform:rotate(90deg)}.fieldzone .cardrow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;align-items:start;overflow:visible;min-height:0}.fieldzone .card{width:100%;min-width:0}.fieldzone .card img.main{width:100%;height:auto}.smallcard{width:80px}.card img.main{display:block;width:100%;border-radius:6px;box-shadow:0 1px 5px #0003}.card.selected{outline:3px solid #4d91e8;border-radius:7px}.card.dragging{opacity:.4}.evo{position:absolute;left:21%;top:7%;width:71.6%;z-index:3;border-radius:6px;box-shadow:0 2px 8px #0005}.badge{position:absolute;left:4px;top:4px;background:#a97820;color:#fff;padding:2px 4px;border-radius:4px;font-size:9px;z-index:5}.stats{position:relative;margin-top:4px;display:flex;justify-content:center;align-items:center;gap:4px;font-weight:900;color:#222;text-shadow:none}.stat{position:relative;min-width:32px;text-align:center}.value,.slash{background:#f2f2f2;border:1px solid #bbb;border-radius:4px;padding:2px 5px}.slash{cursor:pointer}.sb{position:absolute;left:50%;transform:translateX(-50%);display:none;padding:0 6px;line-height:16px;height:17px;font-size:10px;z-index:12}.stat:hover .sb{display:block}.up{bottom:100%}.down{top:100%}.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:100}.modal.show{display:flex}.dialog{width:min(900px,94vw);max-height:88vh;overflow:auto;background:#fff;border:1px solid #bbb;border-radius:10px;padding:12px}.choices{display:flex;flex-wrap:wrap;gap:10px}.choice{width:105px;text-align:center;cursor:pointer}.choice img{width:100%;border-radius:5px}.io{display:flex;gap:5px}.io button{flex:1}@media(max-width:1100px){.app{grid-template-columns:210px minmax(0,1fr)}.right{display:none}}@media(max-width:820px){.app{display:block}.left{display:none}main{display:block}.player{border-right:0;border-bottom:1px solid #ccc;min-height:700px}}
+
+/* v8 tab/display overrides */
+.app{display:block;min-height:calc(100vh - 55px)}
+.app.playmode>.left{display:none!important}
+.app.playmode>main{display:grid!important;grid-template-columns:1fr 1fr;width:100%}
+.app.deckmode>main{display:none!important}
+.app.deckmode>.left{display:grid!important;grid-template-columns:repeat(3,minmax(240px,1fr));gap:10px;max-width:1200px;margin:0 auto;border:0;background:#fff}
+.app.deckmode>.left .box{margin:0}
+.tabbtn.active{background:#dbeaff;border-color:#6fa6e8}
+#battleHeaderControls{display:inline-flex;gap:6px}
+
+/* v8 act-state layout: fixed square cell, no shrink on act, no neighbor overlap */
+.fieldzone .visual,.exzone .visual{
+  aspect-ratio:1/1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  transform-origin:center center;
+}
+.fieldzone .visual img.main,.exzone .visual img.main{
+  width:69%!important;
+  height:auto!important;
+  flex:0 0 auto;
+}
+.fieldzone .visual.acted,.exzone .visual.acted{transform:rotate(90deg)}
+.fieldzone .cardrow{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:8px;
+  align-items:start;
+  overflow:hidden;
+  min-height:0;
+}
+@media(max-width:1100px){
+  .app.playmode>main{grid-template-columns:1fr 1fr}
+  .app.deckmode>.left{grid-template-columns:repeat(2,minmax(240px,1fr))}
+}
+@media(max-width:820px){
+  .app.playmode>main{display:block!important}
+  .app.deckmode>.left{display:grid!important;grid-template-columns:1fr}
+}
+
+
+/* v9 deck registration */
+.app.deckmode>.left.deck-register{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:14px;
+  max-width:1400px;
+  margin:0 auto;
+  padding:12px;
+  background:#fff;
+}
+.deck-column{min-width:0}
+.deck-column>.box{margin-bottom:10px}
+.deckdrop{min-height:150px;transition:background .12s,border-color .12s}
+.deckdrop.drag{border:2px solid #4d91e8;background:#f3f8ff}
+.drophelp{font-size:11px;color:#777;border:1px dashed #bbb;border-radius:5px;padding:6px;text-align:center;margin-bottom:7px}
+
+/* v9 same card size in Field / EX / Hand */
+:root{--play-card-w:96px;--play-image-w:68px}
+.fieldzone .cardrow{
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  gap:8px!important;
+  overflow-x:auto!important;
+  overflow-y:visible!important;
+  align-items:flex-start!important;
+}
+.fieldzone .card,
+.exzone .card,
+.handzone .card{
+  width:var(--play-card-w)!important;
+  min-width:var(--play-card-w)!important;
+  max-width:var(--play-card-w)!important;
+  flex:0 0 var(--play-card-w)!important;
+}
+.fieldzone .visual,
+.exzone .visual,
+.handzone .visual{
+  width:var(--play-card-w)!important;
+  height:var(--play-card-w)!important;
+  aspect-ratio:1/1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.fieldzone .visual img.main,
+.exzone .visual img.main,
+.handzone .visual img.main{
+  width:var(--play-image-w)!important;
+  height:auto!important;
+  flex:0 0 auto;
+}
+.fieldzone .visual.acted,.exzone .visual.acted{transform:rotate(90deg)}
+.fieldzone{overflow:visible}
+.stats{padding-bottom:19px}
+.stat:hover .sb{display:block}
+.sb{z-index:30}
+.down{top:100%;display:none}
+@media(max-width:820px){
+  .app.deckmode>.left.deck-register{grid-template-columns:1fr}
+}
+
+
+/* v10 count display / closed pile drop targets */
+.count{
+  min-width:84px!important;
+  min-height:54px!important;
+  padding:5px 12px!important;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.count b{font-size:15px!important}
+.count span{font-size:23px!important;line-height:1.15}
+.dropcount.drag{outline:2px solid #4d91e8;background:#f3f8ff!important}
+
+
+.orderbadge2{display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:800;border-radius:5px;padding:5px 10px;min-width:48px}.orderbadge2.first{background:#1976d2}.orderbadge2.second{background:#d33b32}
+.turnres{margin-left:auto;display:flex;gap:3px;align-items:center;flex-wrap:wrap}.turnres input{width:48px}
+.life input{width:58px;font-size:23px;font-weight:800;text-align:center;border:0;background:transparent}.endturn{min-width:100px;min-height:54px;font-weight:800}
+.app.deckmode>.left.deck-register{max-width:1760px!important;gap:12px!important}.deckdrop{min-height:0!important}.deckdrop .list{gap:6px!important;max-height:none!important;overflow:visible!important}.deckdrop .thumb,.deckdrop .thumb img{width:72px!important}.deckdrop .thumb .n{font-size:12px!important;padding:1px 5px!important}.deckdrop .drophelp{padding:4px!important;margin-bottom:6px!important}
+@media(min-width:1800px){.app.deckmode>.left.deck-register{max-width:1840px!important}.deckdrop .thumb,.deckdrop .thumb img{width:78px!important}}
+
+
+/* v12 SEP / token / evolve list */
+.turnres input.locked,.turnres input:disabled{background:#ddd!important;color:#888!important;cursor:not-allowed}
+.auxcount{height:54px!important;min-width:84px!important;padding:5px 10px!important}
+.auxcount b{font-size:15px!important;color:#555!important;display:block}
+.auxcount span{font-size:13px!important;line-height:1.15}
+.tokenchoices .tokenchoice{cursor:grab}
+.tokenchoices .tokenchoice:active{cursor:grabbing}
+.evosummary{font-size:16px;margin:4px 0 12px}
+.evolved-used{filter:brightness(.45)}
+
+
+.tokenviewer{border-color:#8eb9ef;background:#f8fbff}
+.tokenviewer .cardrow{flex-wrap:nowrap;overflow-x:auto}
+.tokenlabel{text-align:center;font-size:11px;margin-top:2px}
+
+
+/* v13 revised: right-side life controls and SEP/token fixes */
+.counts{display:flex!important;align-items:stretch!important;gap:5px!important;flex-wrap:nowrap!important}
+.counts .life{margin-left:auto!important;min-width:160px!important;padding:4px 7px!important}
+.counts .auxcount + .life{margin-left:18px!important}
+.life b{margin-right:6px}
+.lifectl{display:flex;align-items:center;justify-content:center;gap:6px;height:100%}
+.lifevalue{display:inline-flex;align-items:center;justify-content:center;min-width:38px;font-size:23px;font-weight:800;line-height:1}
+.lifebtn{display:inline-flex;align-items:center;justify-content:center;width:38px;height:42px;padding:0!important;font-size:24px!important;font-weight:800;line-height:1;cursor:pointer;border-radius:6px}
+.endturn{flex:0 0 100px!important}
+.turnres input:disabled{opacity:1!important;background:#ddd!important;color:#888!important;border-color:#bbb!important}
+.tokenchoice{user-select:none;-webkit-user-drag:element}
+
+
+/* v13 evolve-list action menu */
+.evo-list-choice{cursor:pointer}
+.evo-list-choice:hover{outline:2px solid #777}
+.evoactions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.evoactions button{min-width:150px;min-height:48px;font-size:15px;font-weight:700}
+.evoactioncard{text-align:center}
+.evoactioncard img{width:130px;max-height:185px;object-fit:contain;border-radius:5px}
+
+
+/* v13 generic counter */
+.turnres input[id^="counter"]{width:32px!important;min-width:32px!important;max-width:32px!important;flex:0 0 32px}
+
+
+/* v14: vertical side drawers under the right-side controls */
+.player{position:relative}
+.player .deckviewer,
+.player .pileviewer{
+  position:absolute!important;
+  z-index:30;
+  right:8px!important;
+  top:168px!important;
+  width:225px!important;
+  height:600px!important;
+  max-height:calc(100vh - 205px)!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  box-shadow:0 3px 12px rgba(0,0,0,.18);
+}
+.player .deckviewer .cardrow,
+.player .pileviewer .cardrow{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:7px!important;
+  align-content:start!important;
+  overflow:visible!important;
+  flex-wrap:unset!important;
+}
+.player .deckviewer .card,
+.player .pileviewer .card{
+  width:96px!important;
+  min-width:96px!important;
+}
+.player .deckviewer .visual,
+.player .pileviewer .visual{
+  margin:auto!important;
+}
+.player .tokenviewer{background:#f8fbff!important}
+
+
+.evolved-active{outline:2px solid #c28a00;background:#fff8df}
+.evolved-active img{filter:none!important}
+
+
+/* v14 layout stability: keep P1/P2 columns fixed when side lists open */
+html{
+  overflow-y:scroll;
+  scrollbar-gutter:stable;
+}
+body{
+  min-width:0;
+}
+main,.app{
+  width:100%;
+  box-sizing:border-box;
+}
+
+
+.gravebreak{margin-left:10px;font-weight:600;font-size:13px;white-space:nowrap}
+
+/* ==========================================================================
+   操作履歴
+   --------------------------------------------------------------------------
+   画面右上には直近3件を、新しいものが上になる順で表示する。
+   同じ操作を連続して行った場合もまとめず、1操作=1履歴として残す。
+   ========================================================================== */
+.status-history{
+  margin-left:auto;
+  min-width:270px;
+  max-width:520px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  line-height:1.25;
+  font-size:12px;
+}
+.status-history .status-line{
+  width:100%;
+  text-align:right;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.status-history .status-line:nth-child(2){opacity:.72}
+.status-history .status-line:nth-child(3){opacity:.50}
+
+
+/* デッキ名入力 */
+.deckname-row{display:flex;align-items:center;gap:8px;margin:5px 0 7px}
+.deckname-row label{font-weight:600;white-space:nowrap}
+.deckname{flex:1;min-width:0;padding:6px 8px;border:1px solid #bbb;border-radius:6px}
+
+/* カウンターは使用頻度が高いため、ブラウザ標準の小さいspinnerではなく大きな専用ボタンを使う */
+.counterctl{display:inline-flex;align-items:center;gap:3px;margin-left:3px;vertical-align:middle}
+.counterbtn{
+  width:28px;
+  height:28px;
+  padding:0;
+  font-size:18px;
+  font-weight:700;
+  line-height:1;
+}
+.counterinput{
+  width:32px!important;
+  min-width:32px!important;
+  max-width:32px!important;
+  flex:0 0 32px;
+  height:28px;
+  text-align:center;
+  padding:2px!important;
+}
+
+
+/* カウンター欄は専用の − / ＋ ボタンを使うため、
+   number input標準の上下スピンボタンは表示しない。 */
+.counterinput::-webkit-outer-spin-button,
+.counterinput::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
+}
+.counterinput{
+  appearance:textfield;
+  -moz-appearance:textfield;
+}
+
+
+/* デッキを作り直す際の一括削除ボタン */
+.clear-deck-btn{margin-left:5px}
+
+/* v40: EVOLVE済みカードはエボルヴ対象一覧に表示するが選択不可 */
+.choice.evo-target-disabled{cursor:not-allowed;opacity:.48;filter:grayscale(.25)}
+.choice.evo-target-disabled img{outline:2px solid #aaa}
+.choice.evo-target-disabled .evo-target-note{font-size:11px;font-weight:700;color:#777;margin-top:2px}
+
+/* --------------------------------------------------------------------------
+   モーション実験版：ターン開始時の1秒ドロー演出
+   -------------------------------------------------------------------------- */
+.draw-motion-card{
+  position:fixed;
+  z-index:9999;
+  pointer-events:none;
+  margin:0;
+  transition:
+    transform 1000ms cubic-bezier(.22,.72,.24,1),
+    opacity 1000ms ease;
+  will-change:transform,opacity;
+}
+.draw-motion-card .visual{
+  width:var(--play-card-w)!important;
+  height:var(--play-card-w)!important;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.draw-motion-card .visual img.main{
+  width:var(--play-image-w)!important;
+  height:auto!important;
+}
+.handzone .card.draw-arrival-hidden{
+  visibility:hidden!important;
+}
+
+
+/* --------------------------------------------------------------------------
+   v41 モーション実験
+   - 通常ドローにも同じ1秒スライド
+   - Turn Start時のAct→Stand回転
+   - Turn / 最大PP / 残りPP の更新フラッシュ
+   - EVOLVEカードが少し大きい状態から縮みながら重なる
+   -------------------------------------------------------------------------- */
+.turn-resource-flash{
+  animation:turnResourceFlash 760ms ease-out;
+}
+@keyframes turnResourceFlash{
+  0%   {box-shadow:0 0 0 0 rgba(255,215,64,0); background:#fff;}
+  22%  {box-shadow:0 0 0 4px rgba(255,215,64,.34); background:#fff7c8;}
+  62%  {box-shadow:0 0 0 2px rgba(255,215,64,.16); background:#fffbea;}
+  100% {box-shadow:0 0 0 0 rgba(255,215,64,0); background:#fff;}
+}
+.evolve-motion-card{
+  position:fixed;
+  z-index:10020;
+  pointer-events:none;
+  transform-origin:center center;
+  transition:
+    transform 760ms cubic-bezier(.2,.72,.22,1),
+    opacity 760ms ease;
+  will-change:transform,opacity;
+}
+.evolve-arrival-hidden{
+  visibility:hidden!important;
+}
+
+
+
+/* ==========================================================================\n   v42 smartphone / touch support\n   --------------------------------------------------------------------------\n   PC版のHTMLを分けず、同じHTMLをレスポンシブ表示する。\n   1000px以下ではP1/P2を上下配置し、操作ボタンを折り返す。\n   画面タッチではHTML5 Drag & Dropが安定しないため、カード下の「移動」\n   ボタンから移動先を選べる代替操作も追加する。\n   ========================================================================== */
+.mobile-move-btn{display:none}
+/* DECK LOGコード読込。PC/スマホ共通で使えるよう1行の入力欄にする。 */
+.decklog-row{display:flex;align-items:center;gap:6px;margin:7px 0;flex-wrap:wrap}
+.decklog-row label{font-weight:600;white-space:nowrap}
+.decklog-code{flex:1 1 110px;min-width:90px;padding:6px 8px;border:1px solid #bbb;border-radius:6px;text-transform:uppercase}
+.decklog-read-btn{white-space:nowrap}
+.decklog-note{font-size:11px;color:#666;line-height:1.4;margin-top:3px}
+.mobile-move-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.mobile-move-grid button{min-height:48px;font-weight:700}
+.mobile-move-card{text-align:center;margin:4px auto 8px}
+.mobile-move-card img{width:105px;max-height:150px;object-fit:contain;border-radius:6px}
+
+@media(max-width:1000px){
+  body{font-size:13px;overflow-x:hidden}
+  header{padding:5px max(5px,env(safe-area-inset-right)) 5px max(5px,env(safe-area-inset-left));gap:4px;align-items:center}
+  header h1{display:none}
+  header button{font-size:12px;padding:5px 7px;min-height:34px;white-space:nowrap}
+  #battleHeaderControls{display:inline-flex;flex-wrap:wrap!important;gap:4px!important}
+  .status-history{order:20;flex:1 0 100%;min-width:0!important;max-width:none!important;align-items:flex-start!important;font-size:11px;line-height:1.15}
+  .status-history .status-line{text-align:left!important}
+  .status-history .status-line:nth-child(n+2){display:none}
+
+  .app.playmode>main{display:block!important}
+  .player{min-height:0!important;padding:5px!important;border-right:0!important;border-bottom:2px solid #bbb!important}
+  .phead{gap:4px!important;margin-bottom:5px!important;align-items:center}
+  .phead h2{font-size:13px;margin-right:2px}
+  .phead>button{font-size:12px;padding:5px 6px;min-height:34px}
+  .orderbadge2{padding:4px 6px;min-width:40px}
+  .turnres{flex:1 0 100%;margin-left:0!important;gap:2px 3px!important;font-size:11px;line-height:1.2}
+  .turnres input{width:38px!important;min-width:38px;padding:2px!important;font-size:12px}
+  .turnres input[id^="counter"]{width:30px!important;min-width:30px!important;max-width:30px!important;flex:0 0 30px!important}
+  .counterbtn{min-width:30px!important;min-height:30px!important;padding:0!important}
+
+  .counts{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important;align-items:stretch!important}
+  .counts .count,.counts .auxcount{min-width:0!important;width:auto!important;min-height:46px!important;height:auto!important;padding:3px 4px!important;margin:0!important}
+  .counts .count b,.counts .auxcount b{font-size:11px!important;white-space:nowrap}
+  .counts .count span{font-size:17px!important}
+  .counts .life{grid-column:span 2!important;min-width:0!important;margin-left:0!important;padding:3px!important}
+  .counts .auxcount + .life{margin-left:0!important}
+  .lifevalue{font-size:19px!important;min-width:30px!important}
+  .lifebtn{width:34px!important;height:38px!important;font-size:21px!important}
+  .endturn{grid-column:span 2!important;min-width:0!important;width:100%!important;min-height:46px!important;height:auto!important;flex:none!important}
+
+  :root{--play-card-w:76px;--play-image-w:54px}
+  .zone{padding:4px!important;min-height:70px}
+  .zone-title{font-size:10px;margin-bottom:3px}
+  .fieldzone .cardrow,.exzone .cardrow,.handzone .cardrow{gap:5px!important;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .stats{font-size:12px;gap:2px;padding-top:17px!important;padding-bottom:19px!important;margin-top:2px!important}
+  .stat{min-width:27px!important}
+  .value,.slash{padding:2px 4px!important}
+  .stat .sb{display:block!important;min-width:28px;width:28px;height:20px;line-height:18px;padding:0!important;font-size:10px}
+  .mobile-move-btn{display:block;width:100%;margin-top:3px;padding:3px 2px!important;min-height:30px!important;font-size:11px!important;touch-action:manipulation}
+
+  .player .deckviewer,.player .pileviewer{position:fixed!important;z-index:60;left:6px!important;right:6px!important;top:78px!important;width:auto!important;height:auto!important;max-height:calc(100dvh - 90px)!important;overflow:auto!important;padding:7px!important}
+  .player .deckviewer .cardrow,.player .pileviewer .cardrow{grid-template-columns:repeat(auto-fill,minmax(78px,1fr))!important;gap:8px!important}
+  .player .deckviewer .card,.player .pileviewer .card{width:78px!important;min-width:78px!important;max-width:88px!important;margin:auto}
+
+  .dialog{width:min(96vw,720px)!important;max-height:92dvh!important;padding:10px!important}
+  .dialog h2{font-size:16px;padding-right:50px}
+  .choices{gap:7px!important}
+  .choice{width:82px!important;font-size:11px}
+  .evoactions{gap:7px!important}
+  .evoactions button{min-width:125px!important;min-height:44px!important;font-size:13px!important}
+
+  .app.deckmode>.left.deck-register{grid-template-columns:1fr!important;padding:6px!important;gap:6px!important}
+  .deck-column>.box{margin-bottom:6px!important}
+  .deckname-row{gap:5px}
+  .io{flex-wrap:wrap!important}
+  .io button{flex:1 1 42%!important;min-height:40px}
+  .decklog-row{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto;gap:5px!important}
+  .decklog-code{width:100%;min-width:0}
+  .deckdrop .thumb,.deckdrop .thumb img{width:58px!important}
+  .drophelp{font-size:10px!important}
+}
+
+@media(max-width:480px){
+  header button{font-size:11px;padding:4px 5px}
+  .phead>button{font-size:11px;padding:4px 5px}
+  .turnres{font-size:10px}
+  .counts{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .counts .life{grid-column:span 2!important}
+  .endturn{grid-column:span 1!important}
+  :root{--play-card-w:66px;--play-image-w:47px}
+  .mobile-move-grid{grid-template-columns:1fr 1fr}
+  .player .deckviewer .cardrow,.player .pileviewer .cardrow{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  .player .deckviewer .card,.player .pileviewer .card{width:70px!important;min-width:0!important;max-width:76px!important}
+}
+
+
+/* v45 DECK LOG簡易トークン: 画像を持たず、文字だけで識別する。 */
+.text-token-face{display:flex;align-items:center;justify-content:center;text-align:center;font-weight:800;line-height:1.25;background:#f5f5f5;border:2px solid #888;border-radius:6px;aspect-ratio:459/641;padding:5px;overflow:hidden;word-break:break-all}
+.card .visual>.text-token-face.main{width:100%;min-height:70px}
+.fieldzone .visual>.text-token-face.main,.exzone .visual>.text-token-face.main{width:71.6%;height:auto;min-height:0}
+.thumb-text-token{width:48px;aspect-ratio:459/641;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;font-weight:700;background:#f5f5f5;border:1px solid #999;border-radius:3px;padding:2px}
+.modal-text-token{width:120px;margin:auto}
+</style></head><body>
+
+<!-- =========================================================================
+     HTML モジュール
+     -------------------------------------------------------------------------
+     ここから実際にブラウザへ表示される画面構造です。
+     onclick="draw(0)" のような記述は、クリック時にJavaScript関数を呼び出します。
+     ========================================================================= -->
+
+<!-- [画面上部] タブ、初期化、先攻後攻入替、ステータスメッセージ -->
+<header>
+<h1>SVE 一人回しツール v46 スマホ＋DECK LOG・エボルヴ修正版</h1>
+<button id="deckTabBtn" class="tabbtn" onclick="setTab('deck')">デッキ登録</button>
+<button id="playTabBtn" class="tabbtn active" onclick="setTab('play')">対戦画面</button>
+<span id="battleHeaderControls">
+<button onclick="resetBoth()">初期化</button><button onclick="swapFirstSecondAndReset()">先攻後攻入替＋初期化</button><button onclick="rollDice()">サイコロ</button><span id="diceResult" style="margin-left:6px;font-weight:700">-</span>
+</span>
+<div id="status" class="status status-history">
+  <div class="status-line">準備完了</div>
+</div>
+</header>
+<div id="app" class="app playmode"><!-- [デッキ登録] P1/P2 のメイン・エボルヴ・トークン登録領域 -->
+<aside class="left deck-register">
+  <section class="deck-column">
+    <div class="box"><h2>P1 デッキ入出力</h2><div class="deckname-row"><label for="deckName0">デッキ名</label><input id="deckName0" class="deckname" type="text" placeholder="未入力時は従来のファイル名"></div><div class="decklog-row"><label for="decklog0">DECK LOG</label><input id="decklog0" class="decklog-code" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="例: 9QBYC" onkeydown="if(event.key==='Enter')importDeckLog(0)"><button class="decklog-read-btn" onclick="importDeckLog(0)">コード読込</button></div><div class="decklog-note">DECK LOGのデッキコードを入力すると、メイン/エボルヴを自動登録します。</div><div class="io"><button onclick="exportPlayer(0)">TXT出力</button><button onclick="file0.click()">TXT読込</button><button class="clear-deck-btn" onclick="clearRegisteredDeck(0)">登録情報を一括削除</button><input id="file0" type="file" hidden accept=".txt,.json" onchange="importPlayer(event,0)"></div></div>
+    <div class="box deckdrop" data-player="0" data-kind="normal"><h2>P1 メイン <span id="mc0"></span></h2><div class="drophelp">カード画像をここへドラッグ＆ドロップ</div><div id="ml0" class="list"></div></div>
+    <div class="box deckdrop" data-player="0" data-kind="evolve"><h2>P1 エボルヴ <span id="ec0"></span></h2><div class="drophelp">カード画像をここへドラッグ＆ドロップ</div><div id="el0" class="list"></div></div>
+    <div class="box deckdrop" data-player="0" data-kind="token"><h2>P1 トークン <span id="tc0"></span></h2><div class="drophelp">カード画像をここへドラッグ＆ドロップ</div><div id="tl0" class="list"></div></div>
+  </section>
+  <section class="deck-column">
+    <div class="box"><h2>P2 デッキ入出力</h2><div class="deckname-row"><label for="deckName1">デッキ名</label><input id="deckName1" class="deckname" type="text" placeholder="未入力時は従来のファイル名"></div><div class="decklog-row"><label for="decklog1">DECK LOG</label><input id="decklog1" class="decklog-code" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="例: 9QBYC" onkeydown="if(event.key==='Enter')importDeckLog(1)"><button class="decklog-read-btn" onclick="importDeckLog(1)">コード読込</button></div><div class="decklog-note">DECK LOGのデッキコードを入力すると、メイン/エボルヴを自動登録します。</div><div class="io"><button onclick="exportPlayer(1)">TXT出力</button><button onclick="file1.click()">TXT読込</button><button class="clear-deck-btn" onclick="clearRegisteredDeck(1)">登録情報を一括削除</button><input id="file1" type="file" hidden accept=".txt,.json" onchange="importPlayer(event,1)"></div></div>
+    <div class="box deckdrop" data-player="1" data-kind="normal"><h2>P2 メイン <span id="mc1"></span></h2><div class="drophelp">カード画像をここへドラッグ＆ドロップ</div><div id="ml1" class="list"></div></div>
+    <div class="box deckdrop" data-player="1" data-kind="evolve"><h2>P2 エボルヴ <span id="ec1"></span></h2><div class="drophelp">カード画像をここへドラッグ＆ドロップ</div><div id="el1" class="list"></div></div>
+    <div class="box deckdrop" data-player="1" data-kind="token"><h2>P2 トークン <span id="tc1"></span></h2><div class="drophelp">カード画像をここへドラッグ＆ドロップ</div><div id="tl1" class="list"></div></div>
+  </section>
+</aside>
+<!-- [対戦画面] 左がPlayer 1、右がPlayer 2 -->
+<main>
+<section class="player"><div class="phead"><h2>プレイヤー1</h2><span id="order0" class="orderbadge2"></span><button onclick="draw(0)">ドロー</button><button onclick="shuffle(0)">シャッフル</button><button onclick="topToBottom(0)">ボトムへ</button><button onclick="topToGrave(0)">墓地へ</button><button onclick="mulligan(0)">マリガン</button><button onclick="chooseField(0)">エボルヴ</button><div class="res turnres">ターン<input id="turn0" type="number" value="0" onchange="setTurn(0,this.value)">最大PP<input id="maxpp0" type="number" value="0" onchange="G.p[0].maxpp=+this.value">残りPP<input id="pp0" type="number" value="0" onchange="G.p[0].pp=+this.value">EP<input id="ep0" type="number" value="0" onchange="G.p[0].ep=+this.value">SEP<input id="sep0" type="number" value="1" onchange="G.p[0].sep=+this.value">カウンター<span class="counterctl"><button type="button" class="counterbtn" onclick="changeCounter(0,-1)">−</button><input id="counter0" class="counterinput" type="number" value="0" onchange="G.p[0].counter=+this.value"><button type="button" class="counterbtn" onclick="changeCounter(0,1)">＋</button></span></div></div><div class="counts">
+<div class="count decktoggle dropcount" data-p="0" data-zone="deck" onclick="toggleDeck(0)"><b>山札 ▼</b><span id="d0">0</span></div>
+<div class="count decktoggle dropcount" data-p="0" data-zone="grave" onclick="togglePile(0,'grave')"><b>墓場 ▼</b><span id="g0">0</span></div>
+<div class="count decktoggle dropcount" data-p="0" data-zone="banish" onclick="togglePile(0,'banish')"><b>消滅 ▼</b><span id="b0">0</span></div>
+<button class="count auxcount" onclick="showTokens(0)"><b>トークン</b><span>一覧</span></button>
+<button class="count auxcount" onclick="showEvolveList(0)"><b>エボルヴ</b><span>一覧</span></button>
+<div class="count life"><b>ライフ</b><div class="lifectl"><button type="button" class="lifebtn" onclick="changeLife(0,-1)">−</button><span id="life0" class="lifevalue">20</span><button type="button" class="lifebtn" onclick="changeLife(0,1)">＋</button></div></div>
+<button class="endturn" onclick="startTurn(0)">ターン開始</button>
+</div><div id="deckview0" class="deckviewer zone" data-p="0" data-zone="deck"><div class="zone-title">山札：左から上→下（1が一番上）</div><div id="deckcards0" class="cardrow"></div></div><div id="graveview0" class="pileviewer zone" data-p="0" data-zone="grave"><div class="zone-title">墓場 <span id="gravebreak0" class="gravebreak"></span></div><div id="grave0" class="cardrow"></div></div>
+<div id="banishview0" class="pileviewer zone" data-p="0" data-zone="banish"><div class="zone-title">消滅領域</div><div id="banish0" class="cardrow"></div></div><div id="tokenview0" class="pileviewer tokenviewer"><div class="zone-title">トークン：場またはEXエリアへドラッグ＆ドロップ</div><div id="tokencards0" class="cardrow"></div></div><div class="zone-wrap">
+<div class="zone fieldzone" data-p="0" data-zone="field"><div class="zone-title">場 <span>最大5枚</span></div><div id="field0" class="cardrow"></div></div>
+<div class="zone exzone" data-p="0" data-zone="ex"><div class="zone-title">EXエリア <span>最大5枚</span></div><div id="ex0" class="cardrow"></div></div>
+<div class="zone handzone" data-p="0" data-zone="hand"><div class="zone-title">手札</div><div id="hand0" class="cardrow"></div></div>
+</div></section>
+<section class="player"><div class="phead"><h2>プレイヤー2</h2><span id="order1" class="orderbadge2"></span><button onclick="draw(1)">ドロー</button><button onclick="shuffle(1)">シャッフル</button><button onclick="topToBottom(1)">ボトムへ</button><button onclick="topToGrave(1)">墓地へ</button><button onclick="mulligan(1)">マリガン</button><button onclick="chooseField(1)">エボルヴ</button><div class="res turnres">ターン<input id="turn1" type="number" value="0" onchange="setTurn(1,this.value)">最大PP<input id="maxpp1" type="number" value="0" onchange="G.p[1].maxpp=+this.value">残りPP<input id="pp1" type="number" value="0" onchange="G.p[1].pp=+this.value">EP<input id="ep1" type="number" value="0" onchange="G.p[1].ep=+this.value">SEP<input id="sep1" type="number" value="1" onchange="G.p[1].sep=+this.value">カウンター<span class="counterctl"><button type="button" class="counterbtn" onclick="changeCounter(1,-1)">−</button><input id="counter1" class="counterinput" type="number" value="0" onchange="G.p[1].counter=+this.value"><button type="button" class="counterbtn" onclick="changeCounter(1,1)">＋</button></span></div></div><div class="counts">
+<div class="count decktoggle dropcount" data-p="1" data-zone="deck" onclick="toggleDeck(1)"><b>山札 ▼</b><span id="d1">0</span></div>
+<div class="count decktoggle dropcount" data-p="1" data-zone="grave" onclick="togglePile(1,'grave')"><b>墓場 ▼</b><span id="g1">0</span></div>
+<div class="count decktoggle dropcount" data-p="1" data-zone="banish" onclick="togglePile(1,'banish')"><b>消滅 ▼</b><span id="b1">0</span></div>
+<button class="count auxcount" onclick="showTokens(1)"><b>トークン</b><span>一覧</span></button>
+<button class="count auxcount" onclick="showEvolveList(1)"><b>エボルヴ</b><span>一覧</span></button>
+<div class="count life"><b>ライフ</b><div class="lifectl"><button type="button" class="lifebtn" onclick="changeLife(1,-1)">−</button><span id="life1" class="lifevalue">20</span><button type="button" class="lifebtn" onclick="changeLife(1,1)">＋</button></div></div>
+<button class="endturn" onclick="startTurn(1)">ターン開始</button>
+</div><div id="deckview1" class="deckviewer zone" data-p="1" data-zone="deck"><div class="zone-title">山札：左から上→下（1が一番上）</div><div id="deckcards1" class="cardrow"></div></div><div id="graveview1" class="pileviewer zone" data-p="1" data-zone="grave"><div class="zone-title">墓場 <span id="gravebreak1" class="gravebreak"></span></div><div id="grave1" class="cardrow"></div></div>
+<div id="banishview1" class="pileviewer zone" data-p="1" data-zone="banish"><div class="zone-title">消滅領域</div><div id="banish1" class="cardrow"></div></div><div id="tokenview1" class="pileviewer tokenviewer"><div class="zone-title">トークン：場またはEXエリアへドラッグ＆ドロップ</div><div id="tokencards1" class="cardrow"></div></div><div class="zone-wrap">
+<div class="zone fieldzone" data-p="1" data-zone="field"><div class="zone-title">場 <span>最大5枚</span></div><div id="field1" class="cardrow"></div></div>
+<div class="zone exzone" data-p="1" data-zone="ex"><div class="zone-title">EXエリア <span>最大5枚</span></div><div id="ex1" class="cardrow"></div></div>
+<div class="zone handzone" data-p="1" data-zone="hand"><div class="zone-title">手札</div><div id="hand1" class="cardrow"></div></div>
+</div></section>
+</main></div><!-- [共通モーダル] エボルヴ選択などのポップアップに使用 -->
+<div id="modal" class="modal"><div class="dialog"><button style="float:right" onclick="closeModal()">閉じる</button><h2 id="mt"></h2><div id="mb"></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script><script>
+// ============================================================================
+// JavaScript モジュール
+// ============================================================================
+//
+// このツールの動作本体です。
+// 画面上のカード情報そのものをHTMLへ直接保存するのではなく、まず G という
+// JavaScriptオブジェクトへ状態を保存し、render() で画面へ反映します。
+//
+// 基本パターン:
+//   1. G のデータを変更
+//   2. render()
+//   3. 画面が最新状態になる
+//
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// [01] グローバル状態管理
+// ---------------------------------------------------------------------------
+// G = Game State。
+// decks : 登録デッキ
+// p     : 対戦中のP1/P2状態
+// sel   : 現在選択中のカード
+// n     : カードへ一意なIDを振るための連番
+// drag  : ドラッグ中カードの情報
+const G={decks:[{main:[],evolve:[],token:[]},{main:[],evolve:[],token:[]}],p:[P(),P()],sel:null,n:1,drag:null};
+let firstPlayer=0;
+/**
+ * プレイヤー1人分の初期状態を作る。
+ * deck=山札、hand=手札、field=場、ex=EX、grave=墓場、banish=消滅。
+ * used は「現在場で使用中のエボルヴカード」を保持する領域としても使われる。
+ */
+function P(){return{
+ deck:[],hand:[],field:[],ex:[],grave:[],banish:[],
+ // 対戦専用エボルヴデッキ。
+ // デッキ登録側 G.decks[p].evolve とは完全に分離して管理する。
+ evolveDeck:[],
+ used:[],
+ turn:0,maxpp:0,pp:0,ep:0,sep:1,counter:0,life:20
+}}const $=x=>document.getElementById(x),uid=()=>G.n++,esc=x=>String(x).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'),total=a=>a.reduce((n,c)=>n+(+c.count||0),0);
+/**
+ * デッキ登録用カードデータを作る。
+ * image=画像URL、type=normal/evolve/token、count=登録枚数。
+ */
+function dc(image,type,count=1){return{id:'d'+uid(),image,type,count:+count||1,used:false}}
+/** DECK LOG読込時だけ使う画像なし簡易トークン。 */
+function textToken(label){
+ return{id:'d'+uid(),image:'',type:'token',count:1,used:false,tokenLabel:String(label),statsRead:true}
+}
+/** カード画像がない簡易トークンは、画像の代わりに文字カードを表示する。 */
+function cardFace(c,extraClass='main'){
+ if(c&&c.tokenLabel&&!c.image)return '<div class="'+extraClass+' text-token-face">'+esc(c.tokenLabel)+'</div>';
+ return '<img class="'+extraClass+'" src="'+esc(c?.image||'')+'">';
+}
+/**
+ * 登録カードから「対戦中の実カード」を1枚生成する。
+ * 同じカードが複数枚あっても識別できるよう、新しい runtime ID を付ける。
+ * Power/ToughnessやAct状態など、対戦中だけ必要な値もここで初期化する。
+ */
+function rc(c,ownerP=null){
+ return{...c,id:'r'+uid(),count:1,power:0,toughness:0,basePower:0,baseToughness:0,
+        powerMod:0,toughnessMod:0,evoId:null,acted:false,ownerP}
+}
+/**
+ * 画面右上のステータスメッセージを書き換える。
+ */
+// ---------------------------------------------------------------------------
+// [01.5] 操作履歴
+// ---------------------------------------------------------------------------
+//
+// 右上の履歴は最大3件。
+// 同じ文章が連続しても重複排除しない。
+// これにより「同じボタンを2回押したが、本当に2回処理されたか」を確認できる。
+const STATUS_HISTORY=[];
+
+/**
+ * 操作・処理メッセージを履歴へ1件追加する。
+ * 最新を先頭にし、過去3件だけ画面右上へ残す。
+ */
+function status(message){
+ const text=String(message??'');
+ STATUS_HISTORY.unshift(text);
+ if(STATUS_HISTORY.length>3)STATUS_HISTORY.length=3;
+
+ const box=$('status');
+ if(!box)return;
+ box.innerHTML='';
+ STATUS_HISTORY.forEach(msg=>{
+   const line=document.createElement('div');
+   line.className='status-line';
+   line.textContent=msg;
+   box.appendChild(line);
+ });
+}
+/**
+ * 「デッキ登録」と「対戦画面」の表示を切り替える。
+ */
+function setTab(t){
+ const deck=t==='deck';
+ $('app').className='app '+(deck?'deckmode':'playmode');
+ $('deckTabBtn').classList.toggle('active',deck);
+ $('playTabBtn').classList.toggle('active',!deck);
+ $('battleHeaderControls').style.display=deck?'none':'inline-flex';
+}
+
+
+// ---------------------------------------------------------------------------
+// [02] 画面描画
+// ---------------------------------------------------------------------------
+/**
+ * ゲーム状態 G をHTMLへ一括反映する中心関数。
+ * カード移動や数値変更のあとに render() を呼ぶことで画面を更新する。
+ */
+function render(){for(let p=0;p<2;p++){let x=G.p[p];$('d'+p).textContent=x.deck.length;$('g'+p).textContent=x.grave.length;$('b'+p).textContent=x.banish.length;$('turn'+p).value=x.turn;$('maxpp'+p).value=x.maxpp;$('pp'+p).value=x.pp;$('ep'+p).value=x.ep;$('sep'+p).value=x.sep;$('counter'+p).value=x.counter;syncSepLock(p);$('life'+p).textContent=x.life;let ob=$('order'+p);ob.textContent=p===firstPlayer?'先攻':'後攻';ob.className='orderbadge2 '+(p===firstPlayer?'first':'second');cards('hand'+p,x.hand,p,'hand');cards('field'+p,x.field,p,'field');cards('ex'+p,x.ex,p,'ex');cards('grave'+p,x.grave,p,'grave');cards('banish'+p,x.banish,p,'banish');deckCards(p);$('mc'+p).textContent='('+total(G.decks[p].main)+'/40)';$('ec'+p).textContent='('+total(G.decks[p].evolve)+'/10)';$('tc'+p).textContent='('+total(G.decks[p].token)+')';list('ml'+p,G.decks[p].main);list('el'+p,G.decks[p].evolve);list('tl'+p,G.decks[p].token);renderTokens(p);renderGraveBreakdown(p)}}
+
+/**
+ * デッキ登録画面のカード一覧を描画する。
+ * 左クリック=枚数+1、右クリック=枚数-1。
+ */
+function list(id,a){$(id).innerHTML='';a.forEach(c=>{let d=document.createElement('div');d.className='thumb '+(c.used?'used':'');d.title='左クリック:+1 / 右クリック:-1';d.innerHTML=(c.tokenLabel&&!c.image?'<div class="thumb-text-token">'+esc(c.tokenLabel)+'</div>':'<img src="'+esc(c.image)+'">')+'<span class="n">'+c.count+'</span>';d.onclick=e=>{e.preventDefault();c.count++;render()};d.oncontextmenu=e=>{e.preventDefault();c.count--;if(c.count<=0){let i=a.indexOf(c);if(i>=0)a.splice(i,1)}render()};$(id).appendChild(d)})}
+
+/**
+ * 手札・場・EX・墓場・消滅などのカードを画面へ描画する。
+ * 場/EXではステータス表示とAct/Ready操作も追加する。
+ */
+function cards(id,a,p,z){
+ $(id).innerHTML='';
+ a.forEach(c=>{
+  let d=document.createElement('div');
+  d.className='card '+(z==='field'?'':'smallcard ');
+  d.draggable=true;
+  d.dataset.cardId=c.id;
+  d.dataset.player=String(p);
+  d.dataset.zone=z;
+  let e='';
+  if(c.evoId){
+   // コントロールが相手へ移っても、エボルヴカードは元所有者側の used に残る。
+   let q=G.p[0].used.find(x=>x.id===c.evoId)||G.p[1].used.find(x=>x.id===c.evoId);
+   if(q)e='<img class="evo" src="'+esc(q.image)+'"><span class="badge">EVOLVE</span>'
+  }
+  const canAct=(z==='field'||z==='ex');
+  const acted=(canAct&&c.acted)?' acted':'';
+  d.innerHTML='<div class="visual'+acted+'">'+cardFace(c,'main')+e+'</div>'+((z==='field'||z==='ex')?stat(c,p):'');
+  const visual=d.querySelector('.visual');
+  if(canAct){
+    visual.style.cursor='pointer';
+    visual.onclick=(ev)=>{ev.stopPropagation();c.acted=!c.acted;visual.classList.toggle('acted',c.acted)};
+  }
+  d.ondragstart=ev=>{G.drag={p,zone:z,id:c.id};d.classList.add('dragging');ev.dataTransfer.effectAllowed='move'};
+  d.ondragend=()=>{d.classList.remove('dragging');document.querySelectorAll('.zone.drag,.dropcount.drag').forEach(x=>x.classList.remove('drag'))};
+  addMobileMoveButton(d,p,z,c.id);
+  $(id).appendChild(d)
+ })
+}
+
+/**
+ * 山札一覧を「上から下」の順で表示する。
+ * 内部配列では末尾が山札トップなので reverse() して表示している。
+ */
+function deckCards(p){
+ const el=$('deckcards'+p);if(!el)return;el.innerHTML='';
+ const a=G.p[p].deck;
+ [...a].reverse().forEach((c,idx)=>{
+  let d=document.createElement('div');d.className='card smallcard';d.draggable=true;
+  d.innerHTML='<span class="orderbadge">'+(idx+1)+'</span><div class="visual"><img class="main" src="'+esc(c.image)+'"></div>';
+  d.onclick=()=>{G.sel={p,zone:'deck',id:c.id};render()};
+  d.ondragstart=ev=>{G.drag={p,zone:'deck',id:c.id};d.classList.add('dragging');ev.dataTransfer.effectAllowed='move'};
+  d.ondragend=()=>{d.classList.remove('dragging');document.querySelectorAll('.zone.drag,.dropcount.drag').forEach(x=>x.classList.remove('drag'))};
+  addMobileMoveButton(d,p,'deck',c.id);
+  el.appendChild(d)
+ })
+}
+
+/**
+ * 山札・墓場・消滅・トークンの展開一覧をすべて閉じる。
+ *
+ * この関数を共通化しておくことで、
+ * 「別の一覧を開いたら、今まで開いていた一覧を閉じる」
+ * という排他的な表示を簡単に実現できる。
+ */
+function closeSideLists(){
+ document.querySelectorAll('.deckviewer.show,.pileviewer.show').forEach(v=>v.classList.remove('show'));
+}
+
+/**
+ * 山札一覧の開閉を切り替える。
+ *
+ * 仕様:
+ * - 閉じている山札を押す → 他の一覧を閉じて山札を開く
+ * - 開いている山札を押す → 山札を閉じる
+ */
+function toggleDeck(p){
+ const v=$('deckview'+p);
+ const wasOpen=v.classList.contains('show');
+ closeSideLists();
+ if(!wasOpen)v.classList.add('show');
+ render();
+}
+
+/**
+ * 墓場・消滅一覧の開閉を切り替える。
+ *
+ * z は 'grave' または 'banish'。
+ * 先に全サイド一覧を閉じるため、山札→墓場のように切り替えた場合も
+ * 2つが同時に開くことはない。
+ */
+function togglePile(p,z){
+ const v=$(z+'view'+p);
+ const wasOpen=v.classList.contains('show');
+ closeSideLists();
+ if(!wasOpen)v.classList.add('show');
+ render();
+}
+
+/**
+ * カード下部の Power / Toughness 操作UIのHTMLを生成する。
+ * +1 / -1 / 「/」リセットボタンもここで作る。
+ */
+function stat(c,p){
+ return '<div class="stats">'
+ +'<div class="stat"><button class="sb up" onclick="event.stopPropagation();chg('+p+',\''+c.id+'\',\'power\',1)">+1</button>'
+ +'<div id="sv-'+p+'-'+c.id+'-power" class="value">'+c.power+'</div>'
+ +'<button class="sb down" onclick="event.stopPropagation();chg('+p+',\''+c.id+'\',\'power\',-1)">-1</button></div>'
+ +'<div class="slash" onclick="event.stopPropagation();zero('+p+',\''+c.id+'\')">/</div>'
+ +'<div class="stat"><button class="sb up" onclick="event.stopPropagation();chg('+p+',\''+c.id+'\',\'toughness\',1)">+1</button>'
+ +'<div id="sv-'+p+'-'+c.id+'-toughness" class="value">'+c.toughness+'</div>'
+ +'<button class="sb down" onclick="event.stopPropagation();chg('+p+',\''+c.id+'\',\'toughness\',-1)">-1</button></div>'
+ +'</div>'
+}
+
+/**
+ * 指定したプレイヤー・領域・カードIDからカードを1枚検索する。
+ */
+function find(p,z,i){return G.p[p][z].find(c=>c.id===i)}
+/**
+ * ステータス変更対象を場またはEXから探す。
+ */
+function statCard(p,i){
+ return find(p,'field',i)||find(p,'ex',i);
+}
+
+/**
+ * PowerまたはToughnessを手動で増減する。
+ * 同時に powerMod / toughnessMod へ補正量を記録し、エボルヴ時にも引き継ぐ。
+ */
+function chg(p,i,k,n){
+ let c=statCard(p,i);if(!c)return;
+ c[k]=(+c[k]||0)+n;
+ const mk=k==='power'?'powerMod':'toughnessMod';
+ c[mk]=(+c[mk]||0)+n;
+ let el=$('sv-'+p+'-'+i+'-'+k);if(el)el.textContent=c[k]
+}
+
+/**
+ * Power/Toughnessを0/0へリセットする。
+ */
+function zero(p,i){
+ let c=statCard(p,i);if(!c)return;
+ c.power=c.toughness=0;c.powerMod=c.toughnessMod=0;
+ let pe=$('sv-'+p+'-'+i+'-power'),te=$('sv-'+p+'-'+i+'-toughness');
+ if(pe)pe.textContent='0';if(te)te.textContent='0'
+}
+
+
+// ---------------------------------------------------------------------------
+// [02.8] スマホ用カード移動メニュー
+// ---------------------------------------------------------------------------
+/**
+ * PCでは従来どおりドラッグ＆ドロップを使用する。
+ * スマホではHTML5 Drag & Dropが端末/ブラウザ依存になりやすいため、
+ * CSSでスマホ時だけ表示される「移動」ボタンをカードへ追加する。
+ */
+function addMobileMoveButton(cardEl,p,z,id,label='移動'){
+ const b=document.createElement('button');
+ b.type='button';b.className='mobile-move-btn';b.textContent=label;
+ b.onclick=e=>{e.preventDefault();e.stopPropagation();openMobileMoveMenu(p,z,id)};
+ cardEl.appendChild(b);
+}
+
+/** スマホ用の移動先選択モーダルを開く。 */
+function openMobileMoveMenu(p,z,id){
+ G.mobileMove={p,z,id};
+ let c=null;
+ if(z==='tokenlist')c=G.decks[p].token.find(x=>x.id===id);
+ else c=G.p[p][z]?.find(x=>x.id===id);
+ if(!c)return;
+ const same=[
+   ['field','場'],['ex','EX'],['hand','手札'],['grave','墓場'],['banish','消滅'],['deck','山札上']
+ ].filter(([to])=>to!==z);
+ let buttons=same.map(([to,label])=>'<button onclick="mobileMoveTo('+p+',\''+to+'\')">P'+(p+1)+' '+label+'</button>');
+ // 相手側へは従来ルールどおり「場 / EX」のみ移動可能。
+ const other=1-p;
+ buttons.push('<button onclick="mobileMoveTo('+other+',\'field\')">P'+(other+1)+' 場</button>');
+ buttons.push('<button onclick="mobileMoveTo('+other+',\'ex\')">P'+(other+1)+' EX</button>');
+ if(z==='tokenlist'){
+   buttons=[
+    '<button onclick="mobileMoveTo('+p+',\'field\')">P'+(p+1)+' 場</button>',
+    '<button onclick="mobileMoveTo('+p+',\'ex\')">P'+(p+1)+' EX</button>',
+    '<button onclick="mobileMoveTo('+other+',\'field\')">P'+(other+1)+' 場</button>',
+    '<button onclick="mobileMoveTo('+other+',\'ex\')">P'+(other+1)+' EX</button>'
+   ];
+ }
+ openModal('カードの移動先を選択',
+   '<div class="mobile-move-card">'+(c.tokenLabel&&!c.image?'<div class="text-token-face modal-text-token">'+esc(c.tokenLabel)+'</div>':'<img src="'+esc(c.image)+'">')+'</div>'+ 
+   '<div class="mobile-move-grid">'+buttons.join('')+'</div>');
+}
+
+/** 選択した移動先へ既存の moveCard() を使って移動する。 */
+async function mobileMoveTo(targetP,to){
+ const m=G.mobileMove;if(!m)return;
+ closeModal();
+ await moveCard(m.p,m.z,m.id,to,targetP);
+ G.mobileMove=null;
+}
+
+// ---------------------------------------------------------------------------
+// [03] カード移動 / Drag & Drop ルール
+// ---------------------------------------------------------------------------
+/**
+ * ドラッグ＆ドロップによるカード移動の中心処理。
+ * トークン、場/EXの5枚制限、エボルヴ解除、OCR開始などのルールもここで処理する。
+ */
+async function moveCard(p,from,id,to,targetP=p){
+ const sourceP=p;
+ const cross=targetP!==sourceP;
+ const fromBoard=(from==='field'||from==='ex');
+ const toBoard=(to==='field'||to==='ex');
+
+ // プレイヤーをまたぐ場合、移動先として許可するのは場/EXだけ。
+ if(cross&&!toBoard){
+   status('相手側へ移動できるのは場またはEXエリアだけです');
+   return;
+ }
+
+ // 登録トークンは、自分/相手どちらの場・EXにも生成できる。
+ if(from==='tokenlist'){
+   if(!toBoard){
+     status('トークンは場またはEXエリアにのみ置けます');
+     return;
+   }
+   if(G.p[targetP][to].length>=5){
+     status('P'+(targetP+1)+' '+(to==='field'?'場':'EXエリア')+'は5枚までです');
+     return;
+   }
+   const t=G.decks[sourceP].token.find(c=>c.id===id);
+   if(!t)return;
+   const c=rc(t,sourceP);
+   c.isToken=true;
+   c.acted=false;
+   G.p[targetP][to].push(c);
+   G.sel={p:targetP,zone:to,id:c.id};
+   render();
+   if(!c.statsRead&&c.image){await read(c);render()}
+   status('P'+(sourceP+1)+' のトークンをP'+(targetP+1)+' '+(to==='field'?'場':'EXエリア')+'へ出しました');
+   return;
+ }
+
+ if(sourceP===targetP&&from===to)return;
+ const source=G.p[sourceP][from];if(!source)return;
+ const idx=source.findIndex(c=>c.id===id);if(idx<0)return;
+ const c=source[idx];
+ if(!Number.isInteger(c.ownerP))c.ownerP=sourceP;
+
+ // エボルヴ一覧から直接出したカードは、通常のEVOLVE状態カードとは別扱い。
+ // 場→EXでもそのカード自身をそのままEXへ移動できる。
+ // 盤面外へ出た場合だけ、所有者側の「使用済み」に戻す。
+ if(c.isEvolveDirect&&!toBoard){
+   source.splice(idx,1);
+   c.used=true;
+   addEvoUsed(c.ownerP,c);
+   G.sel=null;
+   render();
+   status('P'+(c.ownerP+1)+' の直接出したエボルヴカードを使用済みにしました');
+   return;
+ }
+
+ if(toBoard&&G.p[targetP][to].length>=5){
+   status('P'+(targetP+1)+' '+(to==='field'?'場':'EXエリア')+'は5枚までです');
+   return;
+ }
+
+ // EVOLVE状態（下:メインデッキカード + 上:エボルヴカード）の特別ルール。
+ // ・場→場: コントロールが移ってもEVOLVE状態を維持。
+ // ・場→EX: EVOLVE解除。下のカードだけEXへ移し、上は使用済みとして一覧へ戻す。
+ // ・場→手札/山札/墓場/消滅: 従来どおりEVOLVE解除。
+ // 直接場に出したエボルヴカードは isEvolveDirect であり、この分岐とは別扱い。
+ if(from==='field'&&c.evoId&&(to==='ex'||!toBoard)){
+   source.splice(idx,1);
+   returnEvo(sourceP,c,to,targetP);
+   return;
+ }
+
+ // 通常移動。EVOLVE状態の場→場はここを通るのでEVOLVEを維持する。
+ source.splice(idx,1);
+
+ // トークンは盤面外へ出ると消滅。
+ if(c.isToken&&!toBoard){
+   render();
+   status('トークンを領域外へ移動したため消滅しました');
+   return;
+ }
+
+ if(toBoard)c.acted=false;
+
+ // 盤面外へ出す通常カードは元の所有者側の領域へ戻す。
+ let actualTargetP=toBoard?targetP:c.ownerP;
+ G.p[actualTargetP][to].push(c);
+ G.sel={p:actualTargetP,zone:to,id:c.id};
+ render();
+
+ if(to==='grave')prefetchCardType(c,actualTargetP);
+ if(toBoard&&!c.statsRead){await read(c);render()}
+
+ if(cross){
+   status('P'+(sourceP+1)+' のカードをP'+(targetP+1)+' '+(to==='field'?'場':'EXエリア')+'へ移動しました'+(c.evoId?'（EVOLVE維持）':''));
+ }
+}
+
+/**
+ * エボルヴ状態のフォロワーが場から離れたときの処理。
+ * 墓場/消滅へ行けばエボルヴカードを使用済みにし、それ以外なら残りへ戻す。
+ */
+/**
+ * EVOLVE状態の元カードが場から離れるときの処理。
+ *
+ * 上に重ねたエボルヴカード:
+ *   行き先に関係なく「使用中 → 使用済み」。
+ *
+ * エボルヴ元カード:
+ *   指定された行き先（EX / 手札 / 山札 / 墓場 / 消滅）へ単独で移動する。
+ *
+ * EXへ移った場合は、エボルヴ前の元カードのステータスへ戻す。
+ */
+function returnEvo(p,c,to,targetP=p){
+ // 上に重ねたエボルヴカードは、下のカードの現在のコントローラに関係なく
+ // 元の所有者側 used に存在するため、P1/P2両方から検索する。
+ let evoOwner=-1,j=-1;
+ for(let q=0;q<2;q++){
+   j=G.p[q].used.findIndex(e=>e.id===c.evoId);
+   if(j>=0){evoOwner=q;break}
+ }
+
+ if(evoOwner>=0){
+   const e=G.p[evoOwner].used.splice(j,1)[0];
+   e.used=true;
+   addEvoUsed(evoOwner,e);
+ }
+
+ c.evoId=null;
+
+ // 下のメインデッキカードはエボルヴ前のステータスへ戻す。
+ if(Number.isFinite(+c.preEvoBasePower)){
+   c.basePower=+c.preEvoBasePower;
+   c.baseToughness=+c.preEvoBaseToughness;
+   c.powerMod=+c.preEvoPowerMod||0;
+   c.toughnessMod=+c.preEvoToughnessMod||0;
+   c.power=c.basePower+c.powerMod;
+   c.toughness=c.baseToughness+c.toughnessMod;
+   c.statsRead=true;
+ }
+ delete c.preEvoBasePower;
+ delete c.preEvoBaseToughness;
+ delete c.preEvoPowerMod;
+ delete c.preEvoToughnessMod;
+
+ if(!Number.isInteger(c.ownerP))c.ownerP=p;
+
+ // 場/EXへ移す場合は指定された側へ置く。
+ // 盤面外へ移す場合は元の所有者側へ戻す。
+ const actualTargetP=(to==='field'||to==='ex')?targetP:c.ownerP;
+ if(to==='field'||to==='ex')c.acted=false;
+
+ G.p[actualTargetP][to].push(c);
+ G.sel={p:actualTargetP,zone:to,id:c.id};
+ render();
+ if(to==='grave')prefetchCardType(c,actualTargetP);
+
+ const dest=to==='field'?'場':to==='ex'?'EXエリア':to==='hand'?'手札':to==='deck'?'山札':to==='grave'?'墓場':to==='banish'?'消滅':'移動先';
+ status('EVOLVE解除：下のカードをP'+(actualTargetP+1)+' '+dest+'へ移動し、上のエボルヴカードを使用済みにしました');
+}
+// ---------------------------------------------------------------------------
+// [05] カード領域の Drag & Drop イベント
+// ---------------------------------------------------------------------------
+// .zone（場・EX・手札・墓場・消滅など）すべてへ共通のDnD処理を登録する。
+// 実際の移動ルールは moveCard() に集約している。
+document.querySelectorAll('.zone').forEach(z=>{
+ z.ondragover=e=>{
+   if(!G.drag)return;
+   const targetP=+z.dataset.p,to=z.dataset.zone;
+   if(targetP!==G.drag.p&&to!=='field'&&to!=='ex')return;
+   e.preventDefault();z.classList.add('drag');
+   e.dataTransfer.dropEffect=G.drag.zone==='tokenlist'?'copy':'move';
+ };
+ z.ondragleave=()=>z.classList.remove('drag');
+ z.ondrop=async e=>{
+   e.preventDefault();z.classList.remove('drag');
+   let d=G.drag;
+   if(!d){try{const raw=e.dataTransfer.getData('text/x-sve-token');if(raw)d=JSON.parse(raw)}catch(_){}}
+   if(!d)return;
+   const targetP=+z.dataset.p,to=z.dataset.zone;G.drag=null;
+   if(targetP!==d.p&&to!=='field'&&to!=='ex'){status('相手側へ移動できるのは場またはEXエリアだけです');return}
+   await moveCard(d.p,d.zone,d.id,to,targetP);
+ }
+})
+
+
+// ---------------------------------------------------------------------------
+// [04] ステータス自動判定 / OCR
+// ---------------------------------------------------------------------------
+/**
+ * 1枚のカード画像へOCRを実行し、Power/Toughnessをカードデータへ保存する。
+ * 成功後は basePower/baseToughness と現在値を更新する。
+ */
+async function read(c){
+ try{
+   let[a,t,via]=await ocr(c.image);
+   c.basePower=a;c.baseToughness=t;c.power=a;c.toughness=t;
+   c.powerMod=c.toughnessMod=0;c.statsRead=true;c.ocrVia=via;
+   status('自動判定: '+a+'/'+t+(via==='proxy'?'（画像取得を補助）':''))
+ }catch(e){
+   // OCR失敗時だけ0/0表示。原因はConsoleにも残す。
+   c.power=c.toughness=0;c.statsRead=false;
+   console.error('OCR failed:',e,c.image);
+   status('自動判定失敗: '+(e&&e.message?e.message:'不明なエラー')+' → 0/0')
+ }
+}
+/**
+ * 現在選択中の場カードについてOCRを再実行するための補助関数。
+ */
+async function reread(){if(G.sel?.zone==='field'){let c=find(G.sel.p,'field',G.sel.id);if(c)await read(c);render()}}
+
+// ---------------------------------------------------------------------------
+// [06] OCR キャッシュ / Worker管理
+// ---------------------------------------------------------------------------
+// Workerは使い回し、同じカード画像の認識結果もキャッシュして速度を上げる。
+let OCR_WORKER_PROMISE=null;
+
+// OCR_CACHE:
+//   同じカード画像URLの印刷ステータスをメモリへ保存する。
+// OCR_PENDING:
+//   同じ画像に対して同時にOCRが走るのを防ぐ。
+//   例: 同名カードを続けて2枚出した場合でも、1回のOCR結果を共有する。
+const OCR_CACHE=new Map();
+const OCR_PENDING=new Map();
+
+// ---------------------------------------------------------------------------
+// [06.5] カード種別判定（Follower / Spell / Amulet）
+// ---------------------------------------------------------------------------
+// 墓場内訳用。Tesseractは使わず、画像下部の種別ラベル背景色をCanvasで判定する。
+// 添付画像を基準に、Follower=赤系、Spell=青紫系、Amulet=緑系として識別する。
+// FollowerはPower表示があるためラベルが右へずれるので、3種類を覆う広めの共通範囲を見る。
+const CARD_TYPE_CACHE=new Map();
+const CARD_TYPE_PENDING=new Map();
+
+function rgbToHsv(r,g,b){
+ r/=255;g/=255;b/=255;
+ const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
+ let h=0;
+ if(d){
+   if(max===r)h=60*(((g-b)/d)%6);
+   else if(max===g)h=60*((b-r)/d+2);
+   else h=60*((r-g)/d+4);
+ }
+ if(h<0)h+=360;
+ return [h,max===0?0:d/max,max];
+}
+
+/**
+ * カード画像の下部ラベル色からカード種別を判定する。
+ * OCRではなく色判定なので高速。
+ */
+async function classifyCardType(url){
+ if(CARD_TYPE_CACHE.has(url))return CARD_TYPE_CACHE.get(url);
+ if(CARD_TYPE_PENDING.has(url))return CARD_TYPE_PENDING.get(url);
+
+ const job=(async()=>{
+   const src=await ocrImageSource(url);
+   const im=src.img,W=im.naturalWidth,H=im.naturalHeight;
+   if(!W||!H)throw Error('カード種別判定用画像サイズを取得できません');
+
+   // 実画像459x641基準で、種別ラベルがある高さだけを切り出す。
+   const sx=Math.floor(W*.08),sy=Math.floor(H*.91);
+   const sw=Math.floor(W*.37),sh=Math.floor(H*.035);
+   const cv=document.createElement('canvas');
+   cv.width=Math.max(1,sw);cv.height=Math.max(1,sh);
+   const ct=cv.getContext('2d',{willReadFrequently:true});
+   ct.drawImage(im,sx,sy,sw,sh,0,0,cv.width,cv.height);
+
+   const d=ct.getImageData(0,0,cv.width,cv.height).data;
+   let valid=0,red=0,bluePurple=0;
+   for(let i=0;i<d.length;i+=4){
+     const [h,sat,val]=rgbToHsv(d[i],d[i+1],d[i+2]);
+     if(sat<.45||val<.25||val>.90)continue;
+     valid++;
+     if(h<28||h>332)red++;
+     if(h>=240&&h<=315)bluePurple++;
+   }
+   if(valid<20)throw Error('カード種別の色サンプルが不足しています');
+
+   const redRate=red/valid,spellRate=bluePurple/valid;
+   let type;
+   if(redRate>.10)type='Follower';
+   else if(spellRate>.10)type='Spell';
+   else type='Amulet';
+
+   CARD_TYPE_CACHE.set(url,type);
+   return type;
+ })();
+
+ CARD_TYPE_PENDING.set(url,job);
+ try{return await job}
+ finally{CARD_TYPE_PENDING.delete(url)}
+}
+
+/**
+ * 1枚のカードへ種別を付与する。判定は画面操作を待たせず非同期で行う。
+ */
+function prefetchCardType(c,p){
+ if(!c||!c.image||c.cardType)return;
+ classifyCardType(c.image).then(type=>{
+   c.cardType=type;
+   renderGraveBreakdown(p);
+ }).catch(err=>console.warn('Card type detection failed:',err,c.image));
+}
+
+/**
+ * 墓場の内訳を「フォロワー / スペル / アミュレット」で表示する。
+ */
+function renderGraveBreakdown(p){
+ const el=$('gravebreak'+p);if(!el)return;
+ let follower=0,spell=0,amulet=0,pending=0;
+ for(const c of G.p[p].grave){
+   if(c.cardType==='Follower')follower++;
+   else if(c.cardType==='Spell')spell++;
+   else if(c.cardType==='Amulet')amulet++;
+   else{pending++;prefetchCardType(c,p)}
+ }
+ el.textContent='フォロワー '+follower+' / スペル '+spell+' / アミュレット '+amulet+(pending?'（判定中 '+pending+'）':'');
+}
+
+
+// OCRアルゴリズムを変更したときに古い誤認識キャッシュを引き継がないための版番号。
+const OCR_CACHE_STORAGE_KEY='sve-ocr-cache-v22-precise-badge';
+
+// file:// 環境ではlocalStorageの扱いがブラウザ依存なので、必ずtry/catchで扱う。
+function loadPersistentOcrCache(){
+ try{
+   const raw=localStorage.getItem(OCR_CACHE_STORAGE_KEY);
+   if(!raw)return;
+   const obj=JSON.parse(raw);
+   for(const [url,v] of Object.entries(obj)){
+     if(Array.isArray(v)&&Number.isFinite(v[0])&&Number.isFinite(v[1])){
+       OCR_CACHE.set(url,[v[0],v[1],v[2]||'cache']);
+     }
+   }
+ }catch(_){}
+}
+function savePersistentOcrCache(){
+ try{
+   const obj={};
+   for(const [url,v] of OCR_CACHE.entries())obj[url]=v;
+   localStorage.setItem(OCR_CACHE_STORAGE_KEY,JSON.stringify(obj));
+ }catch(_){}
+}
+loadPersistentOcrCache();
+
+
+/**
+ * Tesseract.js のOCR Workerを1回だけ生成して使い回す。
+ * カードごとにWorkerを作ると遅いため、Promiseをキャッシュして高速化している。
+ */
+async function getOcrWorker(){
+ if(!OCR_WORKER_PROMISE){
+   OCR_WORKER_PROMISE=(async()=>{
+     const w=await Tesseract.createWorker('eng');
+     await w.setParameters({
+       tessedit_char_whitelist:'0123456789',
+       tessedit_pageseg_mode:'10',
+       preserve_interword_spaces:'0'
+     });
+     return w;
+   })().catch(e=>{OCR_WORKER_PROMISE=null;throw e});
+ }
+ return OCR_WORKER_PROMISE;
+}
+
+// Start downloading/loading the OCR engine in the background.
+// This removes most of the delay from the first card placed on the field.
+setTimeout(()=>{if(window.Tesseract)getOcrWorker().catch(()=>{})},250);
+
+
+/**
+ * カード画像からPower/Toughnessを読み取るOCR本体。
+ * 同じ画像URLの結果は OCR_CACHE に保存し、2枚目以降を高速化する。
+ * 低信頼度の場合だけ追加の二値化OCRを実行する。
+ */
+async function ocr(url){
+ if(!window.Tesseract)throw Error('Tesseract.jsを読み込めません');
+
+ // 既に確定済みなら即返す。2枚目以降はOCRを実行しない。
+ if(OCR_CACHE.has(url))return OCR_CACHE.get(url);
+
+ // 同じ画像のOCRが進行中なら、そのPromiseを共有する。
+ if(OCR_PENDING.has(url))return OCR_PENDING.get(url);
+
+ const job=(async()=>{
+   const src=await ocrImageSource(url),im=src.img,W=im.naturalWidth,H=im.naturalHeight;
+   if(!W||!H)throw Error('カード画像サイズを取得できません');
+   const worker=await getOcrWorker();
+
+   /*
+    * 添付いただいた実カード画像（459×641）を基準に切り出し位置を再調整。
+    *
+    * Power:
+    *   左下「青い剣」マーク中央の白い数字だけ
+    * Toughness:
+    *   右下「赤い盾」マーク中央の白い数字だけ
+    *
+    * 以前は剣/盾の外枠まで広く含めていたため、ハイライトや枠線を数字と誤認する
+    * 可能性があった。v22では「数字そのもの」へさらに寄せる。
+    */
+   const box={
+     y:.846,     // 数字上端
+     h:.078,     // 数字高さ
+     leftX:.060, // Power数字周辺
+     rightX:.862,
+     w:.082
+   };
+
+   /**
+    * 片側の数字だけを高解像度Canvasへ切り出す。
+    * mode='bw' の場合は「白い数字 → 黒」「背景 → 白」に変換し、
+    * Tesseractが通常の黒文字として認識しやすい形へ整える。
+    */
+   function digitCrop(side,mode='bw',threshold=168){
+     const sx=Math.floor(W*(side==='L'?box.leftX:box.rightX));
+     const sy=Math.floor(H*box.y);
+     const sw=Math.floor(W*box.w),sh=Math.floor(H*box.h);
+     const scale=7;
+     const cv=document.createElement('canvas');
+     cv.width=Math.max(1,sw*scale);
+     cv.height=Math.max(1,sh*scale);
+     const ct=cv.getContext('2d',{willReadFrequently:true});
+     ct.imageSmoothingEnabled=true;
+     ct.drawImage(im,sx,sy,sw,sh,0,0,cv.width,cv.height);
+
+     if(mode==='bw'){
+       const z=ct.getImageData(0,0,cv.width,cv.height),d=z.data;
+       for(let i=0;i<d.length;i+=4){
+         const r=d[i],g=d[i+1],b=d[i+2];
+         const lum=.299*r+.587*g+.114*b;
+
+         // 数字は白～明灰色。青/赤背景や暗い影を白背景へ落とす。
+         // 高輝度部分だけ黒文字として残す。
+         const ink=lum>=threshold;
+         const v=ink?0:255;
+         d[i]=d[i+1]=d[i+2]=v;
+         d[i+3]=255;
+       }
+       ct.putImageData(z,0,0);
+
+       // 外枠の白線が僅かに入ってもOCRへ影響しないよう、周囲を白く消す。
+       const pad=Math.max(2,Math.floor(cv.width*.06));
+       ct.fillStyle='#fff';
+       ct.fillRect(0,0,cv.width,pad);
+       ct.fillRect(0,cv.height-pad,cv.width,pad);
+       ct.fillRect(0,0,pad,cv.height);
+       ct.fillRect(cv.width-pad,0,pad,cv.height);
+     }
+     return cv;
+   }
+
+   function parseSingle(r){
+     const txt=String(r?.data?.text||'').replace(/\s/g,'');
+     const m=txt.match(/\d{1,2}/);
+     if(!m)return null;
+     const n=+m[0];
+     if(!Number.isFinite(n)||n<0||n>30)return null;
+     const conf=Number(r?.data?.confidence);
+     return {n,conf:Number.isFinite(conf)?conf:0};
+   }
+
+   /**
+    * 高速経路:
+    * まず1回だけOCRする。
+    * 信頼度が十分なら即採用。
+    *
+    * 精度経路:
+    * 信頼度が低いときだけ閾値を変えて追加判定し、
+    * 2回一致した値を優先する。
+    *
+    * 通常カードでは1～2回、難しい画像だけ最大3回になる。
+    */
+   async function recognizeOne(side){
+     let a=parseSingle(await worker.recognize(digitCrop(side,'bw',168)));
+     if(a&&a.conf>=72)return a.n;
+
+     let b=parseSingle(await worker.recognize(digitCrop(side,'bw',148)));
+     if(a&&b&&a.n===b.n)return a.n;
+     if(b&&b.conf>=78)return b.n;
+
+     let c=parseSingle(await worker.recognize(digitCrop(side,'bw',188)));
+     const vals=[a,b,c].filter(Boolean);
+     if(!vals.length)throw Error(side==='L'?'Powerを認識できません':'Toughnessを認識できません');
+
+     const votes=new Map();
+     for(const v of vals)votes.set(v.n,(votes.get(v.n)||0)+1);
+     const ranked=[...votes.entries()].sort((x,y)=>y[1]-x[1]);
+     if(ranked[0]&&ranked[0][1]>=2)return ranked[0][0];
+
+     vals.sort((x,y)=>y.conf-x.conf);
+     if(vals[0].conf<38)throw Error(side==='L'?'Power認識の信頼度が低すぎます':'Toughness認識の信頼度が低すぎます');
+     return vals[0].n;
+   }
+
+   // Power/Toughnessは同じWorkerを使うが、処理は順番に実行して安定性を優先。
+   const a=await recognizeOne('L');
+   const t=await recognizeOne('R');
+   const ans=[a,t,src.via];
+
+   // 確定結果だけをメモリ + localStorageへ保存。
+   OCR_CACHE.set(url,ans);
+   savePersistentOcrCache();
+   return ans;
+ })();
+
+ OCR_PENDING.set(url,job);
+ try{
+   return await job;
+ }finally{
+   OCR_PENDING.delete(url);
+ }
+}
+
+/**
+ * 手札に来た時点で、ステータスOCRを裏で先行実行する。
+ *
+ * カードを場/EXへ出してからOCRを始めるのではなく、
+ * 「ドローして手札にある時間」を利用してOCR_CACHEを温めておく。
+ * これにより、実際に場へ出す頃にはキャッシュヒットし、表示がほぼ即時になる。
+ *
+ * スペルなどステータスを持たないカードで失敗しても対戦操作には影響させない。
+ */
+function prefetchCardStats(c){
+ if(!c||!c.image||OCR_CACHE.has(c.image)||OCR_PENDING.has(c.image))return;
+ ocr(c.image).catch(()=>{});
+}
+
+/**
+ * 手札全体をバックグラウンドで先読みする。
+ * 一度に大量のOCRを走らせると操作感が悪くなるため、少しずつ開始する。
+ */
+function prefetchHandStats(p){
+ const hand=[...G.p[p].hand];
+ hand.forEach((c,i)=>setTimeout(()=>prefetchCardStats(c),i*80));
+}
+
+
+// ---------------------------------------------------------------------------
+// [06.1] 待機中のエボルヴ / トークン ステータス先読み
+// ---------------------------------------------------------------------------
+// エボルヴやトークンは実際に場へ出す瞬間までOCRしない仕様だった。
+// v39では、初期化後などの待機時間に画像ごとのOCR結果をキャッシュしておく。
+// 実際のカードデータへ数値を書き込むのではなく OCR_CACHE を温めるだけなので、
+// 対戦中のカード状態や登録データは変更しない。
+let SPECIAL_PREFETCH_CHAIN=Promise.resolve();
+
+/**
+ * 指定プレイヤーが登録しているエボルヴ/トークンの画像を、
+ * 重複を除いてバックグラウンドで順番にOCRする。
+ *
+ * Tesseract Workerへ一度に大量投入しないよう、直列キューで処理する。
+ * OCR失敗は対戦操作を止めず、実際にカードを使用した時に read() が再試行できる。
+ */
+function prefetchSpecialStats(p){
+ const urls=[...G.decks[p].evolve,...G.decks[p].token]
+   .map(c=>c&&c.image)
+   .filter(Boolean);
+ const unique=[...new Set(urls)];
+
+ unique.forEach(url=>{
+   if(OCR_CACHE.has(url)||OCR_PENDING.has(url))return;
+   SPECIAL_PREFETCH_CHAIN=SPECIAL_PREFETCH_CHAIN
+     .then(()=>new Promise(resolve=>setTimeout(resolve,120)))
+     .then(()=>ocr(url).catch(()=>{}));
+ });
+}
+
+/**
+ * ブラウザが暇になったタイミングで特殊カードの先読みを予約する。
+ * requestIdleCallback 非対応ブラウザでは setTimeout を使用する。
+ */
+function scheduleSpecialPrefetch(p){
+ const run=()=>prefetchSpecialStats(p);
+ if('requestIdleCallback' in window){
+   requestIdleCallback(run,{timeout:1500});
+ }else{
+   setTimeout(run,800);
+ }
+}
+
+
+/**
+ * URLからImageオブジェクトを非同期で読み込む。
+ * crossOrigin='anonymous' を付け、Canvas/OCRで画像を扱えるよう試みる。
+ */
+function image(u){return new Promise((ok,no)=>{
+ let i=new Image();
+ i.crossOrigin='anonymous';
+ i.onload=()=>ok(i);
+ i.onerror=()=>no(Error('画像をCORSで読み込めません: '+u));
+ i.src=u;
+})}
+
+/**
+ * OCR用画像を取得する。
+ * 直接取得がCORSで失敗した場合のみ画像プロキシを使うフォールバック処理。
+ */
+async function ocrImageSource(url){
+ if(/^data:|^blob:/i.test(url))return{img:await image(url),via:'direct'};
+ try{return{img:await image(url),via:'direct'}}catch(e){}
+ // Many card-image hosts allow display but block canvas/OCR with CORS.
+ // Use an image proxy only as a fallback so the pixels become readable by OCR.
+ const prox='https://images.weserv.nl/?url='+encodeURIComponent(url)+'&output=png';
+ try{return{img:await image(prox),via:'proxy'}}catch(e){
+   throw Error('OCR用画像を取得できません（直接取得/CORS回避とも失敗）')
+ }
+}
+
+
+// ---------------------------------------------------------------------------
+// [07] 山札 / ターン / リソースの基本操作
+// ---------------------------------------------------------------------------
+/**
+ * 山札の一番上1枚を手札へ移す。
+ * このツールでは配列末尾が山札トップなので pop() を使う。
+ */
+async function draw(p){
+ const c=await drawTopCardWithMotion(p);
+ if(c)status('P'+(p+1)+' 1枚ドロー');
+}
+/**
+ * 山札トップ1枚を山札の一番下へ移動する。
+ * pop()で上から取り、unshift()で配列先頭=山札ボトムへ入れる。
+ */
+function topToBottom(p){if(G.p[p].deck.length>1){G.p[p].deck.unshift(G.p[p].deck.pop());render();status('P'+(p+1)+' 山札上1枚を一番下へ移動')}}
+/**
+ * 山札トップ1枚を墓場へ送る。
+ * deck.pop() で取り出し、grave.push() で墓場へ追加する。
+ */
+function topToGrave(p){if(G.p[p].deck.length){const c=G.p[p].deck.pop();G.p[p].grave.push(c);G.sel={p,zone:'grave',id:c.id};render();prefetchCardType(c,p);status('P'+(p+1)+' 山札上1枚を墓場へ移動')}}
+/**
+ * 山札の順番をランダムに並べ替える。
+ */
+function shuffle(p){G.p[p].deck.sort(()=>Math.random()-.5);render();status('P'+(p+1)+' シャッフル')}
+/**
+ * 現在の手札を左から順に山札ボトムへ戻し、その後トップから4枚引く。
+ * この仕様ではシャッフルは行わない。
+ */
+function mulligan(p){
+ const pl=G.p[p];
+ while(pl.hand.length){pl.deck.unshift(pl.hand.shift())}
+ for(let i=0;i<4;i++){if(pl.deck.length)pl.hand.push(pl.deck.pop())}
+ render();
+ status('P'+(p+1)+' 手札を山札の下へ戻し、4枚引きました');
+
+ // 新しい4枚のOCRを待たずにバックグラウンド準備。
+ prefetchHandStats(p);G.p[p].hand.forEach(c=>prefetchCardType(c,p));
+}
+/**
+ * 先攻/後攻とターン数に応じてSEP入力欄をロック/解除する。
+ */
+function syncSepLock(p){
+ const sep=$('sep'+p);if(!sep)return;
+ const unlockAt=(p===firstPlayer?7:6);
+ const locked=(+G.p[p].turn||0)<unlockAt;
+ sep.disabled=locked;
+ sep.classList.toggle('locked',locked);
+ sep.title=locked?((p===firstPlayer?'先攻はターン7':'後攻はターン6')+'から変更できます'):'';
+}
+
+/**
+ * ターン数を手動変更し、その直後にSEPロック状態も更新する。
+ */
+function setTurn(p,v){
+ G.p[p].turn=Math.max(0,+v||0);
+ $('turn'+p).value=G.p[p].turn;
+ syncSepLock(p);
+}
+
+/**
+ * ライフを指定量だけ増減する。
+ */
+function changeLife(p,d){
+ G.p[p].life=(+G.p[p].life||0)+d;
+ const el=$('life'+p);if(el)el.textContent=G.p[p].life;
+}
+
+/**
+ * カウンターをボタンで増減する。
+ * 頻繁に使う操作なので、大きな - / + ボタンから呼び出す。
+ */
+function changeCounter(p,d){
+ G.p[p].counter=(+G.p[p].counter||0)+d;
+ const el=$('counter'+p);
+ if(el)el.value=G.p[p].counter;
+ status('P'+(p+1)+' カウンター '+G.p[p].counter);
+}
+
+
+/**
+ * 指定プレイヤーの対戦状態を初期化する。
+ * 登録デッキを元にランタイム山札も作り直す。
+ */
+function resetPlayer(p){
+ // 相手側の場/EXに一時的に置かれている、このプレイヤー所有カードも初期化時に除去する。
+ const other=p===0?1:0;
+ for(const z of ['field','ex'])G.p[other][z]=G.p[other][z].filter(c=>c.ownerP!==p);
+
+ // 対戦状態だけを作り直す。
+ // デッキ登録データ G.decks[p] 自体は変更しない。
+ G.p[p]=P();
+
+ // メインデッキは登録内容から対戦用カードを生成する。
+ G.p[p].deck=G.decks[p].main.flatMap(c=>Array.from({length:c.count},()=>rc(c,p)));
+
+ // エボルヴデッキも登録内容を「対戦専用コピー」として生成する。
+ // 対戦中に残り枚数や使用済み状態が変わっても、デッキ登録画面には影響しない。
+ G.p[p].evolveDeck=G.decks[p].evolve.map(c=>({
+   ...c,
+   id:'d'+uid(),
+   count:+c.count||0,
+   used:false
+ }));
+
+ const first=p===firstPlayer;
+ G.p[p].turn=first?1:0;
+ G.p[p].maxpp=first?1:0;
+ G.p[p].pp=G.p[p].maxpp;
+ G.p[p].ep=first?0:3;
+ G.p[p].sep=1;
+ G.p[p].counter=0;
+ G.p[p].life=20;
+
+ // 初期化時は登録メインデッキから作り直した山札をシャッフルする。
+ shuffle(p);
+ render();
+
+ // 待機時間を利用してエボルヴ/トークンのOCRキャッシュを準備する。
+ scheduleSpecialPrefetch(p);
+}
+
+/**
+ * P1/P2を同時に初期化する。
+ */
+function resetBoth(){resetPlayer(0);resetPlayer(1);status('P1 / P2 初期化')}
+
+/**
+ * P1/P2の先攻・後攻を入れ替える。
+ */
+function swapFirstSecond(){
+ firstPlayer=firstPlayer===0?1:0;
+ render();
+ status('先攻 / 後攻を入れ替えました');
+}
+
+/**
+ * 先攻・後攻を入れ替えた直後にP1/P2を同時初期化する。
+ *
+ * 「初期化 → 先攻後攻だけ入替」の操作を禁止することで、
+ * 先攻/後攻表示と Turn / 最大PP / 残りPP / EP の初期値が
+ * 食い違う状態を作らないための操作。
+ */
+function swapFirstSecondAndReset(){
+ firstPlayer=firstPlayer===0?1:0;
+ resetPlayer(0);
+ resetPlayer(1);
+ status('先攻 / 後攻を入れ替えて初期化しました');
+}
+
+/**
+ * サイコロ（6面）を1個、1回だけ振る。
+ * Math.random() は 0以上1未満なので、1～6へ変換して表示する。
+ */
+function rollDice(){
+ const result=Math.floor(Math.random()*6)+1;
+ const el=$('diceResult');
+ if(el)el.textContent=result;
+ status('サイコロの結果: '+result);
+}
+
+
+/**
+ * 現在プレイヤーのターン開始処理。
+ * 相手側のターン・最大PPを+1し、残りPPを最大PPまで回復する。
+ */
+/**
+ * 指定したプレイヤーの「ターン開始」処理。
+ *
+ * 1. そのプレイヤーのターン数 +1
+ * 2. 最大PP +1
+ * 3. 残りPP = 最大PP
+ * 4. 場とEXエリアのActカードをすべてStand（縦置き）へ戻す
+ * 5. 山札の上から1枚ドロー
+ */
+async function startTurn(p){
+ const pl=G.p[p];
+
+ // まず画面上のActカードを、クリック操作と同じ回転モーションでStandへ戻す。
+ await animateTurnStand(p);
+ [...pl.field,...pl.ex].forEach(c=>c.acted=false);
+
+ // ターンリソース更新。
+ pl.turn=(+pl.turn||0)+1;
+ pl.maxpp=(+pl.maxpp||0)+1;
+ pl.pp=pl.maxpp;
+
+ // 通常の「ドロー」ボタンと同じ共通関数を使用。
+ // render直後にリソース欄を光らせ、そのまま1秒ドロー演出へ進む。
+ const drawn=await drawTopCardWithMotion(p,()=>flashTurnResources(p));
+ syncSepLock(p);
+
+ status('P'+(p+1)+' ターン開始：Turn '+pl.turn+' / PP '+pl.pp+(drawn?' / 1枚ドロー（モーション）':' / 山札0枚'));
+}
+
+
+
+
+/**
+ * ターン開始ドロー専用の視覚演出。
+ *
+ * 実カードは先に手札へ追加してレイアウト上の最終位置を確定させる。
+ * そのカードを一時的に非表示にし、同じ画像の演出用カードを
+ * 最終位置の約90px上から下へ1秒かけてスライドさせる。
+ *
+ * ゲーム状態そのものには触れない「見た目だけ」の処理。
+ */
+function animateTurnDraw(p,drawn){
+ return new Promise(resolve=>{
+   const hand=$('hand'+p);
+   if(!hand){resolve();return}
+
+   const target=[...hand.children].at(-1);
+   if(!target){resolve();return}
+
+   // OS設定で「視差効果を減らす」が有効なら演出を省略。
+   if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+     resolve();
+     return;
+   }
+
+   const rect=target.getBoundingClientRect();
+   target.classList.add('draw-arrival-hidden');
+
+   const ghost=document.createElement('div');
+   ghost.className='card smallcard draw-motion-card';
+   ghost.innerHTML='<div class="visual"><img class="main" src="'+esc(drawn.image)+'"></div>';
+   ghost.style.left=rect.left+'px';
+   ghost.style.top=rect.top+'px';
+   ghost.style.width=rect.width+'px';
+   ghost.style.opacity='0.82';
+   ghost.style.transform='translateY(-90px) scale(.96)';
+   document.body.appendChild(ghost);
+
+   // 初期位置を一度描画させてから、着地点へ遷移させる。
+   requestAnimationFrame(()=>{
+     requestAnimationFrame(()=>{
+       ghost.style.transform='translateY(0) scale(1)';
+       ghost.style.opacity='1';
+     });
+   });
+
+   let finished=false;
+   const done=()=>{
+     if(finished)return;
+     finished=true;
+     ghost.remove();
+     target.classList.remove('draw-arrival-hidden');
+     resolve();
+   };
+
+   ghost.addEventListener('transitionend',done,{once:true});
+   setTimeout(done,1150);
+ });
+}
+
+/**
+ * 山札トップ→手札の共通処理。
+ * 「ドロー」ボタンと「ターン開始」の両方がこの関数を使う。
+ * これでドロー演出の実装を1か所に集約する。
+ */
+async function drawTopCardWithMotion(p,afterRender=null){
+ const pl=G.p[p];
+ if(!pl.deck.length){
+   render();
+   if(afterRender)afterRender();
+   return null;
+ }
+
+ const c=pl.deck.pop();
+ pl.hand.push(c);
+
+ // 追加後の手札位置を確定してから、その位置へ演出カードを着地させる。
+ render();
+ if(afterRender)afterRender();
+ await animateTurnDraw(p,c);
+
+ setTimeout(()=>{prefetchCardStats(c);prefetchCardType(c,p)},0);
+ return c;
+}
+
+/**
+ * Turn Start専用のAct→Stand演出。
+ * render()でDOMを作り直す前に、現在表示中のActカードを
+ * CSS transitionで縦向きへ戻してから内部状態を更新する。
+ */
+function animateTurnStand(p){
+ return new Promise(resolve=>{
+   const visuals=[
+     ...document.querySelectorAll('#field'+p+' .visual.acted'),
+     ...document.querySelectorAll('#ex'+p+' .visual.acted')
+   ];
+   if(!visuals.length){
+     resolve();
+     return;
+   }
+
+   if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+     visuals.forEach(v=>v.classList.remove('acted'));
+     resolve();
+     return;
+   }
+
+   visuals.forEach(v=>v.classList.remove('acted'));
+   setTimeout(resolve,190);
+ });
+}
+
+/**
+ * Turn / 最大PP / 残りPP の値が更新されたことを、
+ * 一瞬だけ明るくして視覚的に知らせる。
+ */
+function flashTurnResources(p){
+ ['turn'+p,'maxpp'+p,'pp'+p].forEach(id=>{
+   const el=$(id);
+   if(!el)return;
+   el.classList.remove('turn-resource-flash');
+   // 同じターン内でも再発火できるようreflowを挟む。
+   void el.offsetWidth;
+   el.classList.add('turn-resource-flash');
+   setTimeout(()=>el.classList.remove('turn-resource-flash'),820);
+ });
+}
+
+/**
+ * EVOLVEカードが少し大きく・少し上に浮いた状態から、
+ * メインカード上の最終位置へ縮みながら重なる演出。
+ */
+function animateEvolveOverlay(cardId,evoId){
+ return new Promise(resolve=>{
+   let holder=null;
+   for(const el of document.querySelectorAll('.card[data-card-id]')){
+     if(el.dataset.cardId===cardId){
+       holder=el;
+       break;
+     }
+   }
+   if(!holder){resolve();return}
+
+   const actual=holder.querySelector('.visual img.evo');
+   if(!actual){resolve();return}
+
+   if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+     resolve();
+     return;
+   }
+
+   const rect=actual.getBoundingClientRect();
+   actual.classList.add('evolve-arrival-hidden');
+
+   const ghost=document.createElement('img');
+   ghost.className='evo evolve-motion-card';
+   ghost.src=actual.src;
+   ghost.alt='';
+   ghost.style.left=rect.left+'px';
+   ghost.style.top=rect.top+'px';
+   ghost.style.width=rect.width+'px';
+   ghost.style.height=rect.height+'px';
+   ghost.style.opacity='.9';
+   ghost.style.transform='translateY(-24px) scale(1.42)';
+   document.body.appendChild(ghost);
+
+   requestAnimationFrame(()=>{
+     requestAnimationFrame(()=>{
+       ghost.style.transform='translateY(0) scale(1)';
+       ghost.style.opacity='1';
+     });
+   });
+
+   let finished=false;
+   const done=()=>{
+     if(finished)return;
+     finished=true;
+     ghost.remove();
+     actual.classList.remove('evolve-arrival-hidden');
+     resolve();
+   };
+   ghost.addEventListener('transitionend',done,{once:true});
+   setTimeout(done,900);
+ });
+}
+
+
+
+// ---------------------------------------------------------------------------
+// [08] トークン / エボルヴ
+// ---------------------------------------------------------------------------
+/**
+ * 登録済みトークン一覧を対戦画面へ描画する。
+ * ここから場/EXへドラッグすると「コピー」を生成する。
+ */
+function renderTokens(p){
+ const el=$('tokencards'+p);if(!el)return;el.innerHTML='';
+ G.decks[p].token.forEach(c=>{
+   let d=document.createElement('div');d.className='card smallcard tokenchoice';d.draggable=true;
+   d.innerHTML='<div class="visual">'+cardFace(c,'main')+'</div><div class="tokenlabel">'+(c.tokenLabel?esc(c.tokenLabel)+' / ':'')+'登録 '+c.count+'</div>';
+   d.ondragstart=e=>{
+     G.drag={p,zone:'tokenlist',id:c.id};
+     e.dataTransfer.effectAllowed='copyMove';
+     try{e.dataTransfer.setData('text/x-sve-token',JSON.stringify(G.drag));e.dataTransfer.setData('text/plain','SVE_TOKEN:'+c.id)}catch(_){}
+   };
+   d.ondragend=()=>{setTimeout(()=>{G.drag=null},0);document.querySelectorAll('.zone.drag,.dropcount.drag').forEach(x=>x.classList.remove('drag'))};
+   addMobileMoveButton(d,p,'tokenlist',c.id,'出す');
+   el.appendChild(d);
+ });
+}
+
+/**
+ * トークン一覧の表示/非表示を切り替える。
+ *
+ * 山札・墓場・消滅と同じ「サイド一覧」として扱う。
+ * そのため、別の一覧が開いている場合は先に閉じる。
+ */
+function showTokens(p){
+ const v=$('tokenview'+p);
+ const wasOpen=v.classList.contains('show');
+ closeSideLists();
+ if(!wasOpen){
+   renderTokens(p);
+   v.classList.add('show');
+ }
+}
+
+/**
+ * 使用済みエボルヴカードを画像URL単位でまとめ、枚数を集計する。
+ */
+function evoUsedGroups(p){
+ const usedDeck=G.p[p].evolveDeck.filter(c=>c.used);
+ const m=new Map();
+ usedDeck.flatMap(c=>Array.from({length:c.count},()=>c)).forEach(c=>{
+   const key=c.image||c.id;
+   if(!m.has(key))m.set(key,{c,count:0,key});
+   m.get(key).count++;
+ });
+ return [...m.values()];
+}
+
+/**
+ * 現在場で使用中のエボルヴカードを画像URL単位でまとめる。
+ */
+/**
+ * 現在「使用中」のエボルヴカードを画像URL単位でまとめる。
+ *
+ * 2種類を使用中として数える:
+ *  1. 通常フォロワーの上に重ねているエボルヴカード（G.p[p].used）
+ *  2. エボルヴ一覧から直接、場/EXへ出したカード（isEvolveDirect）
+ */
+function evoActiveGroups(p){
+ const m=new Map(),active=[...G.p[p].used];
+ for(let controller=0;controller<2;controller++){
+   for(const c of [...G.p[controller].field,...G.p[controller].ex]){
+     if(c.isEvolveDirect&&(Number.isInteger(c.ownerP)?c.ownerP:controller)===p)active.push(c);
+   }
+ }
+ active.forEach(c=>{
+   const key=c.image||c.id;
+   if(!m.has(key))m.set(key,{c,count:0,key});
+   m.get(key).count++;
+ });
+ return [...m.values()];
+}
+
+/**
+ * 対戦専用エボルヴデッキ一覧モーダルを表示する。
+ * 残り / 使用中 / 使用済みを分けて表示する。
+ *
+ * 重要:
+ * ここで参照するのは G.p[p].evolveDeck。
+ * デッキ登録用 G.decks[p].evolve は対戦中に変更しない。
+ */
+function showEvolveList(p){
+ const avail=G.p[p].evolveDeck.filter(c=>!c.used&&c.count>0);
+ const groups=evoUsedGroups(p);
+ const active=evoActiveGroups(p);
+ const remain=avail.reduce((n,c)=>n+c.count,0);
+ const usedCount=groups.reduce((n,x)=>n+x.count,0);
+ const activeCount=active.reduce((n,x)=>n+x.count,0);
+ const cards=[
+   ...avail.map(c=>({c,label:'残り '+c.count,cls:'',click:"openEvoRemainActions("+p+",'"+c.id+"')"})),
+   // v40: 使用中もクリック可能にし、異常状態から手動復旧できるようにする。
+   ...active.map((x,i)=>({c:x.c,label:'使用中 '+x.count,cls:'evolved-active',click:"openEvoActiveActions("+p+","+i+")"})),
+   ...groups.map((x,i)=>({c:x.c,label:'使用済み '+x.count,cls:'evolved-used',click:"openEvoUsedActions("+p+","+i+")"}))
+ ];
+ const body='<div class="evosummary">残り <b>'+remain+'</b>枚 / 使用中 <b>'+activeCount+'</b>枚 / 使用済み <b>'+usedCount+'</b>枚</div>'+ 
+   (cards.length?'<div class="choices">'+cards.map(x=>'<div class="choice evo-list-choice '+x.cls+'" '+(x.click?'onclick="'+x.click+'"':'')+'><img src="'+esc(x.c.image)+'"><div>'+x.label+'</div></div>').join('')+'</div>':'<p>エボルヴカードはありません。</p>');
+ openModal('P'+(p+1)+' エボルヴリスト',body);
+}
+
+/**
+ * 未使用エボルヴカードをクリックしたときの操作メニューを開く。
+ */
+function openEvoRemainActions(p,id){
+ const c=G.p[p].evolveDeck.find(x=>x.id===id&&!x.used&&x.count>0);if(!c)return;
+ G.evoMenu={p,id};
+ openModal('エボルヴカードの行動を選択',
+   '<div class="evoactioncard"><img src="'+esc(c.image)+'"></div>'+
+   '<div class="evoactions">'+
+   '<button onclick="evoRemainAction(\'used\')">使用済みにする</button>'+
+   '<button onclick="evoRemainAction(\'field\')">場に出す</button>'+
+   '<button onclick="evoRemainAction(\'ex\')">EXエリアに出す</button>'+
+   '<button onclick="showEvolveList('+p+')">戻る</button>'+
+   '</div>');
+}
+
+/**
+ * エボルヴデッキの残り枚数から指定カードを1枚消費する。
+ */
+function consumeEvoRemain(p,id){
+ const a=G.p[p].evolveDeck,c=a.find(x=>x.id===id&&!x.used&&x.count>0);if(!c)return null;
+ const snap={...c,count:1,used:false};
+ c.count--;
+ if(c.count<=0){const i=a.indexOf(c);if(i>=0)a.splice(i,1)}
+ return snap;
+}
+
+/**
+ * エボルヴカードを「使用済み」としてデッキ情報へ戻す。
+ */
+function addEvoUsed(p,c){
+ const a=G.p[p].evolveDeck;
+ const same=a.find(x=>x.used&&x.image===c.image);
+ if(same)same.count=(+same.count||0)+1;
+ else a.push({...c,id:'d'+uid(),count:1,used:true});
+}
+
+/**
+ * エボルヴカードを「未使用の残り」としてデッキ情報へ戻す。
+ */
+function addEvoRemain(p,c){
+ const a=G.p[p].evolveDeck;
+ const same=a.find(x=>!x.used&&x.image===c.image);
+ if(same)same.count=(+same.count||0)+1;
+ else a.push({...c,id:'d'+uid(),count:1,used:false});
+}
+
+/**
+ * エボルヴ一覧から選んだカードに対して、
+ * 使用済みにする / 場へ出す / EXへ出す、を実行する。
+ */
+async function evoRemainAction(action){
+ const m=G.evoMenu;if(!m)return;
+ const p=m.p,id=m.id;
+ if((action==='field'||action==='ex')&&G.p[p][action].length>=5){
+   status((action==='field'?'場':'EXエリア')+'は5枚までです');return;
+ }
+ const c=consumeEvoRemain(p,id);if(!c)return;
+ if(action==='used'){
+   addEvoUsed(p,c);
+   showEvolveList(p);render();status('エボルヴカードを使用済みにしました');return;
+ }
+ const r=rc(c,p);r.isEvolveDirect=true;r.acted=false;r.used=false;
+ G.p[p][action].push(r);G.sel={p,zone:action,id:r.id};
+ closeModal();render();
+ if(action==='ex'){await read(r);render()}else if(action==='field'&&!r.statsRead){await read(r);render()}
+ status('エボルヴカードを'+(action==='field'?'場':'EXエリア')+'に出しました');
+}
+
+/**
+ * 使用中エボルヴカードの操作メニューを開く。
+ *
+ * 使用中には2種類ある:
+ *  1. メインデッキカードの上に重なっているエボルヴカード
+ *  2. エボルヴ一覧から直接、場/EXへ出したエボルヴカード
+ *
+ * どちらも「裏に戻す」「使用済みにする」を選択できる。
+ * これは通常操作だけでなく、万一状態が食い違った場合の復旧手段にもなる。
+ */
+function openEvoActiveActions(p,idx){
+ const groups=evoActiveGroups(p),g=groups[idx];if(!g)return;
+ G.evoMenu={p,activeKey:g.key};
+ openModal('使用中エボルヴカード',
+   '<div class="evoactioncard evolved-active"><img src="'+esc(g.c.image)+'"></div>'+ 
+   '<div class="evoactions">'+
+   '<button onclick="activeEvoAction(\'remain\')">裏に戻す</button>'+ 
+   '<button onclick="activeEvoAction(\'used\')">使用済みにする</button>'+ 
+   '<button onclick="showEvolveList('+p+')">戻る</button>'+ 
+   '</div>');
+}
+
+/**
+ * EVOLVE状態の下カードを通常状態へ戻す。
+ * 場所は変更せず、Power/Toughnessと補正値だけをエボルヴ前へ復元する。
+ */
+function restoreBaseAfterEvo(base){
+ if(!base)return;
+ base.evoId=null;
+ if(Number.isFinite(+base.preEvoBasePower)){
+   base.basePower=+base.preEvoBasePower;
+   base.baseToughness=+base.preEvoBaseToughness;
+   base.powerMod=+base.preEvoPowerMod||0;
+   base.toughnessMod=+base.preEvoToughnessMod||0;
+   base.power=base.basePower+base.powerMod;
+   base.toughness=base.baseToughness+base.toughnessMod;
+   base.statsRead=true;
+ }
+ delete base.preEvoBasePower;
+ delete base.preEvoBaseToughness;
+ delete base.preEvoPowerMod;
+ delete base.preEvoToughnessMod;
+}
+
+/**
+ * 使用中エボルヴカードを1枚だけ処理する。
+ * action='remain': 裏に戻す（未使用の残りへ戻す）
+ * action='used'  : 使用済みにする
+ */
+function activeEvoAction(action){
+ const m=G.evoMenu;if(!m)return;
+ const p=m.p,key=m.activeKey;
+ const putBack=(card)=>{
+   card.used=(action==='used');
+   if(action==='used')addEvoUsed(p,card);
+   else addEvoRemain(p,card);
+ };
+
+ // まず「上に重なっている」使用中カードを探す。
+ const overlayIndex=G.p[p].used.findIndex(c=>(c.image||c.id)===key);
+ if(overlayIndex>=0){
+   const evo=G.p[p].used.splice(overlayIndex,1)[0];
+   let base=null;
+   for(let controller=0;controller<2&&!base;controller++){
+     base=G.p[controller].field.find(c=>c.evoId===evo.id)||
+          G.p[controller].ex.find(c=>c.evoId===evo.id);
+   }
+   // 正常時はbaseが見つかる。見つからない孤立状態でも、使用中カード自体は復旧可能。
+   if(base)restoreBaseAfterEvo(base);
+   putBack(evo);
+   G.sel=null;
+   showEvolveList(p);render();
+   status(action==='used'?'使用中エボルヴカードを使用済みにしました':'使用中エボルヴカードを裏に戻しました');
+   return;
+ }
+
+ // 次に「エボルヴ一覧から直接出した」使用中カードを探す。
+ for(let controller=0;controller<2;controller++){
+   for(const zone of ['field','ex']){
+     const a=G.p[controller][zone];
+     const i=a.findIndex(c=>c.isEvolveDirect&&
+       (Number.isInteger(c.ownerP)?c.ownerP:controller)===p&&
+       (c.image||c.id)===key);
+     if(i>=0){
+       const evo=a.splice(i,1)[0];
+       putBack(evo);
+       G.sel=null;
+       showEvolveList(p);render();
+       status(action==='used'?'使用中エボルヴカードを使用済みにしました':'使用中エボルヴカードを裏に戻しました');
+       return;
+     }
+   }
+ }
+
+ status('使用中エボルヴカードが見つかりませんでした');
+ showEvolveList(p);
+}
+
+/**
+ * 使用済みエボルヴカードの操作メニューを開く。
+ */
+function openEvoUsedActions(p,idx){
+ const groups=evoUsedGroups(p),g=groups[idx];if(!g)return;
+ G.evoMenu={p,usedKey:g.key};
+ openModal('使用済みエボルヴカード',
+   '<div class="evoactioncard evolved-used"><img src="'+esc(g.c.image)+'"></div>'+
+   '<div class="evoactions">'+
+   '<button onclick="returnUsedEvo()">裏に戻す</button>'+
+   '<button onclick="showEvolveList('+p+')">戻る</button>'+
+   '</div>');
+}
+
+/**
+ * 使用済みエボルヴカードを1枚、未使用状態へ戻す。
+ */
+function returnUsedEvo(){
+ const m=G.evoMenu;if(!m)return;
+ const p=m.p,key=m.usedKey;
+ const a=G.p[p].evolveDeck;
+ let c=a.find(x=>x.used&&(x.image||x.id)===key);
+ if(!c)return;
+ const snap={...c,count:1,used:false};
+ c.count--;
+ if(c.count<=0){const i=a.indexOf(c);if(i>=0)a.splice(i,1)}
+ addEvoRemain(p,snap);
+ showEvolveList(p);render();status('使用済みエボルヴカードを残りに戻しました');
+}
+
+/**
+ * エボルヴ操作開始用の補助関数。
+ */
+function evolveStart(p){chooseField(p)}
+/**
+ * エボルヴさせる「場のフォロワー」を選ぶ画面を開く。
+ */
+function chooseField(p){
+ const field=G.p[p].field;
+ const body=field.length
+  ?'<div class="choices">'+field.map(c=>{
+     // すでに通常のEVOLVE状態なら表示はするが、再EVOLVEできないようクリックを付けない。
+     if(c.evoId){
+       return '<div class="choice evo-target-disabled" title="すでにEVOLVE状態のため選択できません">'+
+         '<img src="'+esc(c.image)+'"><div>'+c.power+'/'+c.toughness+'</div>'+ 
+         '<div class="evo-target-note">EVOLVE中・選択不可</div></div>';
+     }
+     return '<div class="choice" onclick="chooseEvo('+p+',\''+c.id+'\')">'+
+       '<img src="'+esc(c.image)+'"><div>'+c.power+'/'+c.toughness+'</div></div>';
+   }).join('')+'</div>'
+  :'<p>場にカードがありません。</p>';
+ openModal('エボルヴする場のカードを選択',body);
+}
+/**
+ * 選択したフォロワーに重ねるエボルヴカードを選ぶ画面を開く。
+ */
+function chooseEvo(p,i){let a=G.p[p].evolveDeck.filter(c=>c.count>0&&!c.used);openModal('使用するエボルヴカードを選択','<div class="choices">'+a.map(c=>'<div class="choice" onclick="doEvo('+p+',\''+i+'\',\''+c.id+'\')"><img src="'+esc(c.image)+'"><div>残り '+c.count+'</div></div>').join('')+'</div>')}
+
+/**
+ * エボルヴ実行本体。
+ * 先にエボルヴ画像を場へ即時表示し、その後OCRを非同期で実行する。
+ * エボルヴ前の手動補正値だけを引き継ぎ、基本値はエボルヴカードの値へ置換する。
+ *
+ * エボルヴカードの残り枚数・使用状態は対戦専用 evolveDeck のみ変更する。
+ * デッキ登録画面のカード枚数や表示状態には一切反映しない。
+ */
+async function doEvo(p,i,eid){
+ let b=find(p,'field',i),a=G.p[p].evolveDeck,e=a.find(x=>x.id===eid&&!x.used&&x.count>0);
+ if(!b||!e)return;
+
+ // 二重EVOLVE防止。
+ if(b.evoId){
+   closeModal();
+   render();
+   status('このカードはすでにEVOLVE状態のため、さらにエボルヴできません');
+   return;
+ }
+
+ const modP=Number.isFinite(+b.powerMod)?+b.powerMod:((+b.power||0)-(+b.basePower||0));
+ const modT=Number.isFinite(+b.toughnessMod)?+b.toughnessMod:((+b.toughness||0)-(+b.baseToughness||0));
+
+ b.preEvoBasePower=+b.basePower||0;
+ b.preEvoBaseToughness=+b.baseToughness||0;
+ b.preEvoPowerMod=modP;
+ b.preEvoToughnessMod=modT;
+
+ e.count--;
+ let u=rc(e,p);
+ u.used=false;
+ G.p[p].used.push(u);
+ b.evoId=u.id;
+ if(e.count<=0)G.p[p].evolveDeck=a.filter(x=>x.count>0);
+
+ closeModal();
+ render();
+ status('エボルヴしました（ステータス自動判定中…）');
+
+ // 実験用：大きめのエボルヴカードが縮みながら下のカードへ重なる。
+ await animateEvolveOverlay(i,u.id);
+
+ try{
+   const [evoP,evoT]=await ocr(e.image);
+
+   // コントロール移動の可能性もあるため、P1/P2双方の場から探す。
+   let current=null;
+   for(let controller=0;controller<2&&!current;controller++){
+     current=G.p[controller].field.find(c=>c.id===i&&c.evoId===u.id)||null;
+   }
+   if(!current)return;
+
+   u.basePower=evoP;u.baseToughness=evoT;
+   u.power=evoP;u.toughness=evoT;
+   u.statsRead=true;
+
+   current.basePower=evoP;
+   current.baseToughness=evoT;
+   current.power=evoP+modP;
+   current.toughness=evoT+modT;
+   current.powerMod=modP;
+   current.toughnessMod=modT;
+   current.statsRead=true;
+
+   render();
+   status('エボルヴ: ステータス自動判定 '+current.power+'/'+current.toughness);
+ }catch(err){
+   console.error('Evolve OCR failed:',err,e.image);
+   status('エボルヴカードのステータス自動判定に失敗しました');
+ }
+}
+/**
+ * 共通モーダルを開き、タイトルと本文HTMLを設定する。
+ */
+function openModal(t,b){$('mt').textContent=t;$('mb').innerHTML=b;$('modal').classList.add('show')}
+/**
+ * 共通モーダルを閉じる。
+ */
+function closeModal(){$('modal').classList.remove('show')}
+
+
+// ---------------------------------------------------------------------------
+// [09] デッキ登録 / TXT入出力
+// ---------------------------------------------------------------------------
+
+/**
+ * 指定プレイヤーの登録デッキを一括削除する。
+ * メイン / エボルヴ / トークン / デッキ名をまとめて空にする。
+ * 誤操作防止のため、実行前に確認ダイアログを表示する。
+ */
+function clearRegisteredDeck(p){
+ const ok=confirm('P'+(p+1)+' のデッキ登録情報をすべて削除します。\nメイン・エボルヴ・トークン・デッキ名が削除されます。\nよろしいですか？');
+ if(!ok)return;
+
+ G.decks[p].main=[];
+ G.decks[p].evolve=[];
+ G.decks[p].token=[];
+ const name=$('deckName'+p);
+ if(name)name.value='';
+
+ // 古い登録内容を使った対戦状態も残さない。
+ resetPlayer(p);
+ render();
+ status('P'+(p+1)+' デッキ登録情報を一括削除しました');
+}
+
+/**
+ * 指定プレイヤーのメイン/エボルヴ/トークンをTXT(JSON)として保存する。
+ */
+/**
+ * 指定プレイヤーのメイン/エボルヴ/トークンをTXT(JSON)として保存する。
+ *
+ * デッキ名欄が入力済み:
+ *   「デッキ名.txt」
+ * 空欄:
+ *   従来どおり「sve-deck-P1.txt / sve-deck-P2.txt」
+ *
+ * Windowsでファイル名に使えない文字は「_」へ置換する。
+ */
+function exportPlayer(p){
+ const data=[
+   G.decks[p].main.map(c=>({image:c.image,count:c.count,type:'normal',selected:false})),
+   G.decks[p].evolve.map(c=>({image:c.image,count:c.count,type:'evolve',selected:false})),
+   G.decks[p].token.map(c=>({image:c.image,count:c.count,type:'evolve',selected:false}))
+ ];
+ const blob=new Blob([JSON.stringify(data)],{type:'text/plain;charset=utf-8'});
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);
+
+ const input=$('deckName'+p);
+ const raw=input?input.value.trim():'';
+ const safe=raw.replace(/[\\/:*?"<>|]/g,'_').replace(/[. ]+$/,'').trim();
+ a.download=safe?(safe+'.txt'):('sve-deck-P'+(p+1)+'.txt');
+
+ a.click();
+ URL.revokeObjectURL(a.href);
+ status('P'+(p+1)+' TXT出力: '+a.download);
+}
+
+
+/**
+ * デッキ登録領域へ画像をドロップしたとき、該当デッキへ1枚追加する。
+ */
+function addCardDirect(p,type,u){
+ const a=type==='token'?G.decks[p].token:type==='evolve'?G.decks[p].evolve:G.decks[p].main;
+ const q=a.find(c=>c.image===u);
+ q?q.count++:a.push(dc(u,type));
+ render();
+
+ // エボルヴ/トークンは登録した時点から待機中OCRの対象にする。
+ if(type==='evolve'||type==='token')scheduleSpecialPrefetch(p);
+
+ status('P'+(p+1)+' '+(type==='normal'?'メイン':type==='evolve'?'エボルヴ':'トークン')+'に1枚追加');
+}
+
+/**
+ * ブラウザ間ドラッグ＆ドロップのDataTransferから画像URLを抽出する。
+ * text/html、URI、plain text、画像ファイルなど複数形式へ対応する。
+ */
+function extractDropUrl(d){
+ /*
+  * v25重要修正:
+  * Edge/ChromeのDataTransferはdropイベントの同期処理中に読み切る必要がある。
+  * v24ではawait後にもDataTransferを参照していたため、Edgeで内容が空になる場合があった。
+  */
+ const candidates=[];
+ const types=[...(d.types||[])];
+ const rawByType={};
+
+ // ブラウザが公開している全文字列typeを即座にコピーする。
+ for(const type of types){
+   if(type==='Files')continue;
+   try{rawByType[type]=d.getData(type)||''}catch(_){rawByType[type]=''}
+ }
+
+ // Chromium系で現れる可能性がある既知形式も明示的に確認する。
+ const known=['text/html','text/uri-list','text/plain','URL','DownloadURL',
+              'text/x-moz-url','text/x-moz-url-data','application/x-moz-file-promise-url'];
+ for(const type of known){
+   if(type in rawByType)continue;
+   try{rawByType[type]=d.getData(type)||''}catch(_){rawByType[type]=''}
+ }
+
+ function decodeHtml(v){
+   const ta=document.createElement('textarea');ta.innerHTML=v;return ta.value;
+ }
+ function add(v,source){
+   if(!v)return;
+   const raw=String(v).trim();if(!raw)return;
+
+   const im=raw.match(/<img[^>]+src\s*=\s*["']([^"']+)["']/i);
+   if(im&&im[1])candidates.push({url:decodeHtml(im[1]),source});
+
+   const ss=raw.match(/<img[^>]+srcset\s*=\s*["']([^"']+)["']/i);
+   if(ss&&ss[1]){
+     const first=ss[1].split(',')[0].trim().split(/\s+/)[0];
+     if(first)candidates.push({url:decodeHtml(first),source:source+' srcset'});
+   }
+
+   if(source==='DownloadURL'){
+     const dm=raw.match(/^[^:]+:[^:]*:(https?:\/\/.+)$/i);
+     if(dm)candidates.push({url:dm[1].trim(),source});
+   }
+
+   for(const line of raw.split(/\r?\n/)){
+     const x=line.trim();
+     if(x&&!x.startsWith('#')&&/^(?:https?:\/\/|blob:|data:image\/)/i.test(x)){
+       candidates.push({url:decodeHtml(x),source});
+     }
+   }
+
+   const urls=raw.match(/(?:https?:\/\/|blob:|data:image\/)[^\s"'<>]+/ig)||[];
+   for(const u of urls)candidates.push({url:decodeHtml(u),source});
+ }
+
+ for(const [type,value] of Object.entries(rawByType))add(value,type);
+
+ const seen=new Set(),clean=[];
+ for(const c of candidates){
+   let u=String(c.url||'').trim().replace(/&amp;/g,'&').replace(/[)\],;]+$/,'');
+   if(u&&!seen.has(u)){seen.add(u);clean.push({url:u,source:c.source})}
+ }
+
+ let hit=clean.find(c=>/^https?:\/\//i.test(c.url)&&/\.(?:png|jpe?g|webp|gif|avif)(?:[?#].*)?$/i.test(c.url));
+ if(!hit)hit=clean.find(c=>/^https?:\/\//i.test(c.url));
+ if(!hit)hit=clean.find(c=>/^data:image\//i.test(c.url));
+ if(!hit)hit=clean.find(c=>/^blob:/i.test(c.url));
+
+ return hit||{url:'',source:'',types,rawByType};
+}
+
+/**
+ * 6つのデッキ登録ボックスへDrag & Dropイベントを設定する。
+ *
+ * v25ではEdge / ChromeのDataTransferをdropイベント中に同期コピーするため、
+ * text/html / uri-list / plain / DownloadURL / DataTransfer.items / Files
+ * を順番に確認する。取得失敗時も無反応にせず診断メッセージを表示する。
+ */
+function setupDeckDrops(){
+ document.querySelectorAll('.deckdrop').forEach(box=>{
+   box.addEventListener('dragenter',e=>{e.preventDefault();e.stopPropagation();box.classList.add('drag')});
+   box.addEventListener('dragover',e=>{
+     e.preventDefault();e.stopPropagation();box.classList.add('drag');
+     try{e.dataTransfer.dropEffect='copy'}catch(_){}
+   });
+   box.addEventListener('dragleave',e=>{if(!box.contains(e.relatedTarget))box.classList.remove('drag')});
+
+   box.addEventListener('drop',e=>{
+     e.preventDefault();e.stopPropagation();box.classList.remove('drag');
+
+     const p=+box.dataset.player,type=box.dataset.kind,d=e.dataTransfer;
+
+     // ★重要: awaitより前、dropイベント中にすべてコピーする。
+     const hit=extractDropUrl(d);
+     const files=d.files?[...d.files]:[];
+     const receivedTypes=[...(d.types||[])];
+
+     // 非同期処理はDataTransfer本体ではなく、上で保存したコピーだけを使う。
+     (async()=>{
+       try{
+         const u=hit&&hit.url?hit.url:'';
+
+         if(u&&/^(?:https?:\/\/|data:image\/)/i.test(u)){
+           addCardDirect(p,type,u);
+           status('P'+(p+1)+' '+(type==='normal'?'メイン':type==='evolve'?'エボルヴ':'トークン')+
+                  'に1枚追加（DnD: '+(hit.source||'URL')+'）');
+           return;
+         }
+
+         if(u&&/^blob:/i.test(u)){
+           try{
+             const res=await fetch(u),blob=await res.blob();
+             if(blob.type&&blob.type.startsWith('image/')){
+               const dataUrl=await new Promise((ok,no)=>{
+                 const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(blob);
+               });
+               addCardDirect(p,type,dataUrl);status('P'+(p+1)+' 画像をblob経由で追加');return;
+             }
+           }catch(err){console.warn('blob DnD conversion failed:',err)}
+         }
+
+         if(files.length){
+           let added=0;
+           for(const f of files){
+             if(!f.type||!f.type.startsWith('image/'))continue;
+             const dataUrl=await new Promise((ok,no)=>{
+               const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(f);
+             });
+             addCardDirect(p,type,dataUrl);added++;
+           }
+           if(added){status('P'+(p+1)+' ローカル画像 '+added+'枚を追加');return}
+         }
+
+         const detail=receivedTypes.length?receivedTypes.join(', '):'なし';
+         status('画像URLを取得できませんでした（受信形式: '+detail+'）');
+         console.warn('Deck image drop: URL not found',{
+           types:receivedTypes,
+           raw:hit&&hit.rawByType?hit.rawByType:{}
+         });
+       }catch(err){
+         console.error('Deck image drop failed:',err);
+         status('画像のドラッグ＆ドロップ処理でエラーが発生しました');
+       }
+     })();
+   });
+ });
+}
+
+/**
+ * 山札/墓場/消滅の一覧が閉じていても、枚数ボックスへカードをドロップできるよう設定する。
+ */
+function setupClosedPileDrops(){
+ document.querySelectorAll('.dropcount').forEach(t=>{
+   t.addEventListener('dragenter',e=>{if(!G.drag)return;e.preventDefault();e.stopPropagation();t.classList.add('drag')});
+   t.addEventListener('dragover',e=>{if(!G.drag)return;e.preventDefault();e.stopPropagation();t.classList.add('drag');e.dataTransfer.dropEffect=(G.drag&&G.drag.zone==='tokenlist')?'copy':'move'});
+   t.addEventListener('dragleave',e=>{if(!t.contains(e.relatedTarget))t.classList.remove('drag')});
+   t.addEventListener('drop',async e=>{
+     if(!G.drag)return;
+     e.preventDefault();e.stopPropagation();t.classList.remove('drag');
+     const p=+t.dataset.p,to=t.dataset.zone,d=G.drag;G.drag=null;
+     if(p!==d.p)return;
+     await moveCard(d.p,d.zone,d.id,to);
+   });
+ });
+}
+
+/**
+ * 読み込んだ旧形式TXTを現在の内部データ形式へ変換・正規化する。
+ */
+function normalizeDeckFile(raw,p){
+ // Original sve-alone-tool format confirmed from user TXT:
+ // [main, evolve, token].
+ // Token cards in legacy files can also carry type:"evolve",
+ // therefore group position is authoritative for this 3-array format.
+ if(Array.isArray(raw)&&raw.length===2&&raw.every(x=>Array.isArray(x))&&raw.every(x=>x.length===3&&x.every(y=>Array.isArray(y)))) raw=raw[p]||raw[0];
+ if(!Array.isArray(raw)||raw.length<3||!raw.slice(0,3).every(Array.isArray))throw Error('unsupported');
+
+ const main=(raw[0]||[]);
+ const evolve=(raw[1]||[]);
+ const token=(raw[2]||[]);
+ return {main,token,evolve}
+}
+
+/**
+ * TXT文字列を指定プレイヤーのデッキ登録情報へ反映する共通処理。
+ * ファイル選択とスマホの「貼付読込」の両方から利用する。
+ */
+function importPlayerText(text,p){
+ const parsed=normalizeDeckFile(JSON.parse(text),p);
+ G.decks[p].main=parsed.main.map(c=>dc(c.image,'normal',c.count));
+ G.decks[p].token=parsed.token.map(c=>dc(c.image,'token',c.count));
+ G.decks[p].evolve=parsed.evolve.map(c=>dc(c.image,'evolve',c.count));
+ resetPlayer(p);
+}
+
+/** TXTファイルを読み込み、指定プレイヤーへ反映する。 */
+function importPlayer(ev,p){
+ let f=ev.target.files[0];if(!f)return;let r=new FileReader();
+ r.onload=()=>{
+  try{importPlayerText(r.result,p);status('P'+(p+1)+' TXT読込完了')}
+  catch(e){alert('TXT形式を読み込めませんでした')}
+ };
+ r.readAsText(f,'utf-8');ev.target.value=''
+}
+
+// ---------------------------------------------------------------------------
+// [09.4] DECK LOG デッキコード読込
+// ---------------------------------------------------------------------------
+// DECK LOG API が返す img は例: "BP16/bp16-045.png" の相対パス。
+// Shadowverse EVOLVE公式カード画像の基準URLを前につけて登録画像URLへ変換する。
+const DECKLOG_PROXY_BASE='https://decklog-proxy.hiroshi-shoutai0164.workers.dev/?code=';
+const SVE_CARD_IMAGE_BASE='https://shadowverse-evolve.com/wordpress/wp-content/images/cardlist/';
+
+/**
+ * 「9QBYC」だけでなくDECK LOGのview URLを貼り付けた場合もコードだけ取り出す。
+ */
+function normalizeDeckLogCode(value){
+ let v=String(value||'').trim();
+ const m=v.match(/decklog\.bushiroad\.com\/view\/([A-Za-z0-9_-]+)/i);
+ if(m)v=m[1];
+ return v.replace(/[^A-Za-z0-9_-]/g,'').toUpperCase();
+}
+
+/**
+ * DECK LOGのJSONを現在の登録形式へ変換する。
+ * ユーザー確認済み仕様: type=1 はメイン、type=2 はエボルヴ。
+ * それ以外のtypeは意味を断定せず読み飛ばす。
+ */
+function applyDeckLogData(data,p,code){
+ if(!data||typeof data!=='object')throw new Error('DECK LOGのデータ形式が不正です');
+
+ // DECK LOGのレスポンスでは、メインとエボルヴが必ず同じ配列階層に
+ // 入るとは限らないため、レスポンス全体を再帰的に走査して
+ // 「card_number / img / num / type」を持つカード項目を収集する。
+ // これにより、別配列に格納されたエボルヴも取り込める。
+ const cardItems=[];
+ const seenObjects=new Set();
+ function walk(v){
+  if(!v||typeof v!=='object'||seenObjects.has(v))return;
+  seenObjects.add(v);
+  if(Array.isArray(v)){
+   for(const x of v)walk(x);
+   return;
+  }
+  if(v.card_number!=null && v.img!=null && v.num!=null && v.type!=null){
+   cardItems.push(v);
+  }
+  for(const x of Object.values(v))walk(x);
+ }
+ walk(data);
+ if(!cardItems.length)throw new Error('DECK LOGのカード一覧が見つかりません');
+
+ const main=[],evolve=[];
+ const skipped=[];
+ const merged=new Map();
+ for(const item of cardItems){
+  const count=Number(item?.num)||0;
+  const rel=String(item?.img||'').replace(/^\/+/, '');
+  const type=Number(item?.type);
+  if(count<=0||!rel)continue;
+  if(type!==1&&type!==2){skipped.push(item);continue}
+
+  // 同一カードがレスポンス内の複数箇所に重複して現れても二重登録しない。
+  const key=type+'|'+rel.toLowerCase();
+  const prev=merged.get(key);
+  if(!prev || count>prev.count)merged.set(key,{type,rel,count});
+ }
+
+ for(const {type,rel,count} of merged.values()){
+  const image=SVE_CARD_IMAGE_BASE+rel;
+  if(type===1)main.push(dc(image,'normal',count));
+  else if(type===2)evolve.push(dc(image,'evolve',count));
+ }
+
+ if(!main.length&&!evolve.length)throw new Error('メイン/エボルヴカードを取得できませんでした');
+
+ // DECK LOGにはトークン登録情報がないため、この読込経路だけ
+ // 「トークン1～4」の画像なし簡易トークンを自動登録する。
+ G.decks[p].main=main;
+ G.decks[p].evolve=evolve;
+ G.decks[p].token=['トークン1','トークン2','トークン3','トークン4'].map(textToken);
+ if(data.title&&$('deckName'+p))$('deckName'+p).value=String(data.title);
+ resetPlayer(p);
+ render();
+ scheduleSpecialPrefetch(p);
+ const msg='P'+(p+1)+' DECK LOG '+code+' 読込完了（メイン '+total(main)+'枚 / エボルヴ '+total(evolve)+'枚 / 簡易トークン4種）';
+ status(msg+(skipped.length?' ※未確認type '+skipped.length+'件を除外':''));
+}
+
+/**
+ * DECK LOGコードからCloudflare Worker経由でデッキJSONを取得する。
+ * ブラウザからDECK LOG APIを直接呼ぶとCORSで拒否されるため、
+ * decklog-proxy WorkerがDECK LOGへのPOST通信を中継する。
+ */
+async function importDeckLog(p){
+ const input=$('decklog'+p);
+ const code=normalizeDeckLogCode(input?.value||'');
+ if(!code){alert('DECK LOGのデッキコードを入力してください。例: 9QBYC');return}
+ if(input)input.value=code;
+ const btn=input?.parentElement?.querySelector('.decklog-read-btn');
+ if(btn){btn.disabled=true;btn.textContent='読込中…'}
+ status('P'+(p+1)+' DECK LOG '+code+' を取得中…');
+ try{
+  const res=await fetch(DECKLOG_PROXY_BASE+encodeURIComponent(code),{
+   method:'GET',
+   cache:'no-store'
+  });
+  if(!res.ok){
+   const detail=await res.text().catch(()=>'');
+   throw new Error('HTTP '+res.status+(detail?' / '+detail.slice(0,160):''));
+  }
+  const data=await res.json();
+  if(data?.error)throw new Error(String(data.error));
+  applyDeckLogData(data,p,code);
+ }catch(e){
+  console.error('DECK LOG import failed:',e);
+  status('P'+(p+1)+' DECK LOG読込失敗');
+  alert('DECK LOGのデッキ読込に失敗しました。\n\n'+
+        'デッキコード: '+code+'\n'+
+        'Cloudflare Worker経由で取得しています。\n\n'+
+        '詳細: '+(e?.message||e));
+ }finally{
+  if(btn){btn.disabled=false;btn.textContent='コード読込'}
+ }
+}
+
+
+
+render();
+// ---------------------------------------------------------------------------
+// [09.5] 余白クリックでサイド一覧を閉じる
+// ---------------------------------------------------------------------------
+//
+// 目的:
+//   山札・墓場・消滅・トークンを開いたまま、場やEX、手札などの
+//   「何もない余白」をクリックしたら一覧を閉じる。
+//
+// 閉じないクリック:
+//   ・button      : ドロー、シャッフル、ボトムへ、墓地へ、マリガン等
+//   ・input       : PP、EP、ターン等の数値入力
+//   ・.card       : カード本体
+//   ・.count      : 山札/墓場/消滅の展開ボタン
+//   ・展開中一覧  : 山札・墓場・消滅・トークンの中身
+//
+// これにより、機能ボタンを押しても一覧は維持される一方、
+// 場・EX・手札などの空白部分をクリックすると閉じる。
+document.addEventListener('click',e=>{
+ const t=e.target;
+
+ // 機能を持つ操作部品を押した場合は、展開状態を維持する。
+ if(t.closest('button,input,select,textarea,a'))return;
+
+ // 山札/墓場/消滅の枚数ボックスは、それぞれの toggle 関数に任せる。
+ if(t.closest('.count'))return;
+
+ // カードをクリックした場合は、Act/Readyや選択操作を優先する。
+ if(t.closest('.card'))return;
+
+ // 展開されている一覧そのものをクリックしても閉じない。
+ if(t.closest('.deckviewer,.pileviewer'))return;
+
+ // 上記以外 = 画面の余白として扱い、開いている一覧を閉じる。
+ closeSideLists();
+});
+
+// ---------------------------------------------------------------------------
+// [10] 起動時の初期設定
+// ---------------------------------------------------------------------------
+// ここから下は、HTML読込完了後にイベント設定と初期描画を行う。
+setupDeckDrops();setupClosedPileDrops();setTab('play');
+status('準備完了');
+</script></body></html>
