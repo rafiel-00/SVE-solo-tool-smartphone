@@ -1,6 +1,6 @@
 <!--
 ===============================================================================
- SVE 一人回しツール v48 スマホUI調整版  学習・開発版
+ SVE 一人回しツール v49 スマホ操作改善版  学習・開発版
 ===============================================================================
 
 【このファイルの目的】
@@ -118,7 +118,7 @@ function rc()
 ===============================================================================
 -->
 
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>SVE 一人回しツール v48 スマホUI調整版</title>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>SVE 一人回しツール v49 スマホ操作改善版</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#fff;color:#222;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px}button,input{font:inherit}button{background:#f4f4f4;color:#222;border:1px solid #bbb;border-radius:6px;padding:6px 9px;cursor:pointer}button:hover{background:#e9e9e9}header{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 10px;background:#fafafa;border-bottom:1px solid #ccc;position:sticky;top:0;z-index:20}header h1{font-size:16px;margin:0 12px 0 0}.status{margin-left:auto;color:#666;font-size:12px}.app{display:grid;grid-template-columns:250px minmax(0,1fr) 250px;min-height:calc(100vh - 55px)}aside{padding:8px;background:#fafafa;overflow:auto}.left{border-right:1px solid #ccc}.box{background:#fff;border:1px solid #ccc;border-radius:8px;padding:8px;margin-bottom:8px}.box h2{font-size:13px;margin:0 0 7px}.help{color:#666;font-size:12px;line-height:1.5}.drop{border:2px dashed #bbb;border-radius:7px;padding:13px;text-align:center;color:#666;font-size:12px}.drop.drag{border-color:#4d91e8;background:#f3f8ff}.list{display:flex;flex-wrap:wrap;gap:5px;max-height:210px;overflow:auto}.thumb{width:48px;position:relative;cursor:pointer;border-radius:4px}.thumb img{width:48px;display:block;border-radius:3px}.thumb .n{position:absolute;right:1px;bottom:1px;background:#000c;color:#fff;padding:1px 4px;font-size:10px;border-radius:3px}.thumb.used{filter:brightness(.45)}.thumb:hover{outline:2px solid #8eb9ef}main{min-width:0;display:grid;grid-template-columns:1fr 1fr}.player{min-width:0;padding:8px;display:flex;flex-direction:column;border-right:1px solid #ccc}.player:last-child{border-right:0}.phead{display:flex;gap:5px;align-items:center;margin-bottom:6px;flex-wrap:wrap}.phead h2{font-size:14px;margin:0 4px 0 0}.res{margin-left:auto;display:flex;gap:3px;align-items:center}.res input{width:42px;background:#fff;color:#222;border:1px solid #bbb;border-radius:4px;padding:3px}.counts{display:flex;gap:5px;margin-bottom:5px;flex-wrap:wrap}.count{border:1px solid #ccc;background:#fafafa;border-radius:5px;padding:3px 8px;min-width:56px}.count b{font-size:10px;color:#777;display:block}.count span{font-size:15px}.zone-wrap{display:grid;grid-template-rows:auto auto auto;gap:0;flex:0 0 auto;min-height:0}.zone-wrap>.zone{border-radius:0;margin:0}.zone-wrap>.zone:first-child{border-radius:7px 7px 0 0}.zone-wrap>.zone:last-child{border-radius:0 0 7px 7px}.zone-wrap>.zone+.zone{border-top:0}.zone{border:1px solid #cfcfcf;border-radius:7px;background:#fff;padding:6px;min-height:82px}.zone.drag{border:2px solid #4d91e8;background:#f3f8ff}.zone-title{font-size:11px;color:#666;margin-bottom:4px}.decktoggle{cursor:pointer}.decktoggle:hover{background:#eef5ff}.deckviewer{display:none;border:1px solid #8eb9ef;background:#f8fbff;border-radius:7px;padding:6px;margin-bottom:6px}.deckviewer.show{display:block}.pileviewer{display:none;border:1px solid #bbb;background:#fff;border-radius:7px;padding:6px;margin-bottom:6px}.pileviewer.show{display:block}.deckviewer .cardrow{max-height:290px;overflow:auto}.orderbadge{position:absolute;left:2px;top:2px;z-index:9;background:#fff;color:#222;border:1px solid #aaa;border-radius:10px;padding:1px 5px;font-size:9px}.cardrow{display:flex;gap:6px;overflow:auto;min-height:74px;align-items:flex-start;flex-wrap:wrap}.fieldzone{min-height:160px;max-height:none;border-style:dashed;background:#fcfcfc}.exzone{min-height:92px;max-height:none;overflow:hidden}.exzone .cardrow{min-height:108px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden}.card{width:106px;position:relative;flex:0 0 auto;cursor:grab}.visual{position:relative;width:100%;transform-origin:center center;transition:transform .15s ease}.visual.acted{transform:rotate(90deg)}.fieldzone .visual,.exzone .visual{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;overflow:visible}.fieldzone .visual img.main,.exzone .visual img.main{width:71.6%;height:auto;flex:0 0 auto}.fieldzone .visual.acted,.exzone .visual.acted{transform:rotate(90deg)}.fieldzone .cardrow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;align-items:start;overflow:visible;min-height:0}.fieldzone .card{width:100%;min-width:0}.fieldzone .card img.main{width:100%;height:auto}.smallcard{width:80px}.card img.main{display:block;width:100%;border-radius:6px;box-shadow:0 1px 5px #0003}.card.selected{outline:3px solid #4d91e8;border-radius:7px}.card.dragging{opacity:.4}.evo{position:absolute;left:21%;top:7%;width:71.6%;z-index:3;border-radius:6px;box-shadow:0 2px 8px #0005}.badge{position:absolute;left:4px;top:4px;background:#a97820;color:#fff;padding:2px 4px;border-radius:4px;font-size:9px;z-index:5}.stats{position:relative;margin-top:4px;display:flex;justify-content:center;align-items:center;gap:4px;font-weight:900;color:#222;text-shadow:none}.stat{position:relative;min-width:32px;text-align:center}.value,.slash{background:#f2f2f2;border:1px solid #bbb;border-radius:4px;padding:2px 5px}.slash{cursor:pointer}.sb{position:absolute;left:50%;transform:translateX(-50%);display:none;padding:0 6px;line-height:16px;height:17px;font-size:10px;z-index:12}.stat:hover .sb{display:block}.up{bottom:100%}.down{top:100%}.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:100}.modal.show{display:flex}.dialog{width:min(900px,94vw);max-height:88vh;overflow:auto;background:#fff;border:1px solid #bbb;border-radius:10px;padding:12px}.choices{display:flex;flex-wrap:wrap;gap:10px}.choice{width:105px;text-align:center;cursor:pointer}.choice img{width:100%;border-radius:5px}.io{display:flex;gap:5px}.io button{flex:1}@media(max-width:1100px){.app{grid-template-columns:210px minmax(0,1fr)}.right{display:none}}@media(max-width:820px){.app{display:block}.left{display:none}main{display:block}.player{border-right:0;border-bottom:1px solid #ccc;min-height:700px}}
 
@@ -714,6 +714,86 @@ main,.app{
   .app.playmode .handzone .cardrow{height:96px!important;grid-template-rows:repeat(2,44px)!important;grid-auto-columns:58px!important}
   :root{--play-card-w:58px;--play-image-w:41px}
 }
+
+
+/* ==========================================================================
+   v49 smartphone usability tuning
+   - P/T表示をカード幅内に収める
+   - Turn/PP/EP/SEP/Counterを3列×2段、スマホのみ±ボタン付き
+   - 手札は1段目5枚を埋めてから2段目へ
+   - 山札/墓場/消滅一覧はターン開始の下に2列・縦スクロール表示
+   ========================================================================== */
+.resitem{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
+.resctl{display:inline-flex;align-items:center;gap:2px}
+.mobile-res-btn{display:none}
+
+@media(max-width:1000px){
+  /* 盤面カードのP/Tをカード幅内に収め、隣カードへ重ならないようにする。 */
+  .app.playmode .stats{width:100%!important;max-width:100%!important;gap:1px!important;justify-content:center!important;overflow:hidden!important}
+  .app.playmode .stats .stat{min-width:22px!important;width:22px!important;max-width:22px!important}
+  .app.playmode .stats .value,.app.playmode .stats .stat-value-input{
+    width:22px!important;min-width:22px!important;max-width:22px!important;height:24px!important;
+    padding:0!important;font-size:10px!important;line-height:22px!important;border-radius:3px!important
+  }
+  .app.playmode .stats .slash{width:11px!important;min-width:11px!important;max-width:11px!important;height:24px!important;padding:0!important;font-size:10px!important;line-height:22px!important;border-radius:3px!important}
+
+  /* 資源値: 1段目 Turn/最大PP/残りPP、2段目 EP/SEP/Counter。 */
+  .app.playmode .turnres{
+    grid-column:1/-1!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:3px!important;overflow:visible!important;white-space:normal!important;width:100%!important
+  }
+  .app.playmode .turnres .resitem{display:grid!important;grid-template-rows:auto 26px!important;gap:1px!important;min-width:0!important;text-align:center!important}
+  .app.playmode .turnres .reslabel{font-size:9px!important;line-height:10px!important;overflow:hidden!important;white-space:nowrap!important}
+  .app.playmode .turnres .resctl{display:grid!important;grid-template-columns:24px minmax(28px,1fr) 24px!important;gap:2px!important;min-width:0!important}
+  .app.playmode .turnres input,.app.playmode .turnres input[id^="counter"]{
+    width:100%!important;min-width:0!important;max-width:none!important;height:26px!important;padding:0!important;font-size:11px!important;text-align:center!important
+  }
+  .app.playmode .mobile-res-btn,.app.playmode .counterbtn{
+    display:inline-flex!important;align-items:center!important;justify-content:center!important;
+    width:24px!important;min-width:24px!important;max-width:24px!important;height:26px!important;min-height:26px!important;padding:0!important;font-size:15px!important;line-height:1!important
+  }
+  .app.playmode .turnres .resitem:has(input:disabled) .mobile-res-btn{opacity:.4;pointer-events:none}
+
+  /* 手札は横方向に5枚で1段。6枚目から2段目へ送る。 */
+  .app.playmode .handzone .cardrow{
+    display:grid!important;grid-template-columns:repeat(5,64px)!important;grid-template-rows:repeat(2,64px)!important;
+    grid-auto-flow:row!important;grid-auto-columns:64px!important;grid-auto-rows:64px!important;
+    gap:5px!important;overflow-x:auto!important;overflow-y:hidden!important;align-content:start!important;justify-content:start!important
+  }
+  .app.playmode .handzone .card{width:64px!important;min-width:64px!important;max-width:64px!important;flex-basis:64px!important}
+
+  /* 展開した山札/墓場/消滅は、盤面右側だけを覆う2列パネルにする。
+     場の左側は露出するため、一覧から場へそのままドラッグ可能。 */
+  .app.playmode .player{position:relative!important}
+  .app.playmode .player .deckviewer,.app.playmode .player .pileviewer{
+    position:absolute!important;z-index:70!important;left:auto!important;right:4px!important;top:0;
+    width:154px!important;max-width:44vw!important;height:auto!important;max-height:300px!important;
+    margin:0!important;padding:4px!important;overflow-y:auto!important;overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;background:#fff!important;
+    box-shadow:0 3px 12px #0004!important
+  }
+  .app.playmode .player .deckviewer .cardrow,.app.playmode .player .pileviewer .cardrow{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-rows:auto!important;
+    gap:4px!important;height:auto!important;max-height:none!important;overflow:visible!important;align-items:start!important
+  }
+  .app.playmode .player .deckviewer .card,.app.playmode .player .pileviewer .card{
+    width:64px!important;min-width:0!important;max-width:64px!important;margin:0 auto!important
+  }
+  .app.playmode .player .deckviewer .visual,.app.playmode .player .pileviewer .visual{
+    width:64px!important;height:64px!important
+  }
+  .app.playmode .player .deckviewer .visual img.main,.app.playmode .player .pileviewer .visual img.main{width:46px!important}
+}
+
+@media(max-width:1000px) and (orientation:landscape){
+  .app.playmode .handzone .cardrow{grid-template-columns:repeat(5,58px)!important;grid-template-rows:repeat(2,44px)!important;grid-auto-columns:58px!important;grid-auto-rows:44px!important}
+  .app.playmode .handzone .card{width:58px!important;min-width:58px!important;max-width:58px!important;flex-basis:58px!important}
+  .app.playmode .player .deckviewer,.app.playmode .player .pileviewer{width:142px!important;max-height:210px!important}
+  .app.playmode .player .deckviewer .card,.app.playmode .player .pileviewer .card{width:58px!important;max-width:58px!important}
+  .app.playmode .player .deckviewer .visual,.app.playmode .player .pileviewer .visual{width:58px!important;height:58px!important}
+  .app.playmode .player .deckviewer .visual img.main,.app.playmode .player .pileviewer .visual img.main{width:41px!important}
+}
+
 </style></head><body>
 
 <!-- =========================================================================
@@ -725,7 +805,7 @@ main,.app{
 
 <!-- [画面上部] タブ、初期化、先攻後攻入替、ステータスメッセージ -->
 <header>
-<h1>SVE 一人回しツール v48 スマホUI調整版</h1>
+<h1>SVE 一人回しツール v49 スマホ操作改善版</h1>
 <button id="deckTabBtn" class="tabbtn" onclick="setTab('deck')">デッキ登録</button>
 <button id="playTabBtn" class="tabbtn active" onclick="setTab('play')">対戦画面</button>
 <button id="mobileP1TabBtn" class="tabbtn mobile-player-tab active" onclick="setMobilePlayer(0)">P1</button>
@@ -754,7 +834,7 @@ main,.app{
 </aside>
 <!-- [対戦画面] 左がPlayer 1、右がPlayer 2 -->
 <main>
-<section class="player" data-player-panel="0"><div class="phead"><h2>プレイヤー1</h2><span id="order0" class="orderbadge2"></span><button onclick="draw(0)">ドロー</button><button onclick="shuffle(0)">シャッフル</button><button onclick="topToBottom(0)">ボトムへ</button><button onclick="topToGrave(0)">墓地へ</button><button onclick="mulligan(0)">マリガン</button><button onclick="chooseField(0)">エボルヴ</button><div class="res turnres">ターン<input id="turn0" type="number" value="0" onchange="setTurn(0,this.value)">最大PP<input id="maxpp0" type="number" value="0" onchange="G.p[0].maxpp=+this.value">残りPP<input id="pp0" type="number" value="0" onchange="G.p[0].pp=+this.value">EP<input id="ep0" type="number" value="0" onchange="G.p[0].ep=+this.value">SEP<input id="sep0" type="number" value="1" onchange="G.p[0].sep=+this.value">カウンター<span class="counterctl"><button type="button" class="counterbtn" onclick="changeCounter(0,-1)">−</button><input id="counter0" class="counterinput" type="number" value="0" onchange="G.p[0].counter=+this.value"><button type="button" class="counterbtn" onclick="changeCounter(0,1)">＋</button></span></div></div><div class="counts">
+<section class="player" data-player-panel="0"><div class="phead"><h2>プレイヤー1</h2><span id="order0" class="orderbadge2"></span><button onclick="draw(0)">ドロー</button><button onclick="shuffle(0)">シャッフル</button><button onclick="topToBottom(0)">ボトムへ</button><button onclick="topToGrave(0)">墓地へ</button><button onclick="mulligan(0)">マリガン</button><button onclick="chooseField(0)">エボルヴ</button><div class="res turnres"><div class="resitem"><span class="reslabel">ターン</span><span class="resctl"><button type="button" class="mobile-res-btn" onclick="changeResource(0,'turn',-1)">−</button><input id="turn0" type="number" value="0" onchange="setTurn(0,this.value)"><button type="button" class="mobile-res-btn" onclick="changeResource(0,'turn',1)">＋</button></span></div><div class="resitem"><span class="reslabel">最大PP</span><span class="resctl"><button type="button" class="mobile-res-btn" onclick="changeResource(0,'maxpp',-1)">−</button><input id="maxpp0" type="number" value="0" onchange="G.p[0].maxpp=+this.value"><button type="button" class="mobile-res-btn" onclick="changeResource(0,'maxpp',1)">＋</button></span></div><div class="resitem"><span class="reslabel">残りPP</span><span class="resctl"><button type="button" class="mobile-res-btn" onclick="changeResource(0,'pp',-1)">−</button><input id="pp0" type="number" value="0" onchange="G.p[0].pp=+this.value"><button type="button" class="mobile-res-btn" onclick="changeResource(0,'pp',1)">＋</button></span></div><div class="resitem"><span class="reslabel">EP</span><span class="resctl"><button type="button" class="mobile-res-btn" onclick="changeResource(0,'ep',-1)">−</button><input id="ep0" type="number" value="0" onchange="G.p[0].ep=+this.value"><button type="button" class="mobile-res-btn" onclick="changeResource(0,'ep',1)">＋</button></span></div><div class="resitem"><span class="reslabel">SEP</span><span class="resctl"><button type="button" class="mobile-res-btn" onclick="changeResource(0,'sep',-1)">−</button><input id="sep0" type="number" value="1" onchange="G.p[0].sep=+this.value"><button type="button" class="mobile-res-btn" onclick="changeResource(0,'sep',1)">＋</button></span></div><div class="resitem"><span class="reslabel">カウンター</span><span class="resctl counterctl"><button type="button" class="counterbtn" onclick="changeCounter(0,-1)">−</button><input id="counter0" class="counterinput" type="number" value="0" onchange="G.p[0].counter=+this.value"><button type="button" class="counterbtn" onclick="changeCounter(0,1)">＋</button></span></div></div></div><div class="counts">
 <div class="count decktoggle dropcount" data-p="0" data-zone="deck" onclick="toggleDeck(0)"><b>山札 ▼</b><span id="d0">0</span></div>
 <div class="count decktoggle dropcount" data-p="0" data-zone="grave" onclick="togglePile(0,'grave')"><b>墓場 ▼</b><span id="g0">0</span></div>
 <div class="count decktoggle dropcount" data-p="0" data-zone="banish" onclick="togglePile(0,'banish')"><b>消滅 ▼</b><span id="b0">0</span></div>
@@ -768,7 +848,7 @@ main,.app{
 <div class="zone exzone" data-p="0" data-zone="ex"><div class="zone-title">EXエリア <span>最大5枚</span></div><div id="ex0" class="cardrow"></div></div>
 <div class="zone handzone" data-p="0" data-zone="hand"><div class="zone-title">手札</div><div id="hand0" class="cardrow"></div></div>
 </div></section>
-<section class="player" data-player-panel="1"><div class="phead"><h2>プレイヤー2</h2><span id="order1" class="orderbadge2"></span><button onclick="draw(1)">ドロー</button><button onclick="shuffle(1)">シャッフル</button><button onclick="topToBottom(1)">ボトムへ</button><button onclick="topToGrave(1)">墓地へ</button><button onclick="mulligan(1)">マリガン</button><button onclick="chooseField(1)">エボルヴ</button><div class="res turnres">ターン<input id="turn1" type="number" value="0" onchange="setTurn(1,this.value)">最大PP<input id="maxpp1" type="number" value="0" onchange="G.p[1].maxpp=+this.value">残りPP<input id="pp1" type="number" value="0" onchange="G.p[1].pp=+this.value">EP<input id="ep1" type="number" value="0" onchange="G.p[1].ep=+this.value">SEP<input id="sep1" type="number" value="1" onchange="G.p[1].sep=+this.value">カウンター<span class="counterctl"><button type="button" class="counterbtn" onclick="changeCounter(1,-1)">−</button><input id="counter1" class="counterinput" type="number" value="0" onchange="G.p[1].counter=+this.value"><button type="button" class="counterbtn" onclick="changeCounter(1,1)">＋</button></span></div></div><div class="counts">
+<section class="player" data-player-panel="1"><div class="phead"><h2>プレイヤー2</h2><span id="order1" class="orderbadge2"></span><button onclick="draw(1)">ドロー</button><button onclick="shuffle(1)">シャッフル</button><button onclick="topToBottom(1)">ボトムへ</button><button onclick="topToGrave(1)">墓地へ</button><button onclick="mulligan(1)">マリガン</button><button onclick="chooseField(1)">エボルヴ</button><div class="res turnres"><div class="resitem"><span class="reslabel">ターン</span><span class="resctl"><button type="button" class="mobile-res-btn" onclick="changeResource(1,'turn',-1)">−</button><input id="turn1" type="number" value="0" onchange="setTurn(1,this.value)"><button type="button" class="mobile-res-btn" onclick="changeResource(1,'turn',1)">＋</button></span></div><div class="resitem"><span class="reslabel">最大PP</span><span class="resctl"><button type="button" class="mobile-res-btn" onclick="changeResource(1,'maxpp',-1)">−</button><input id="maxpp1" type="number" value="0" onchange="G.p[1].maxpp=+this.value"><button type="button" class="mobile-res-btn" onclick="changeResource(1,'maxpp',1)">＋</button></span></div><div class="resitem"><span class="reslabel">残りPP</span><span class="resctl"><button type="button" class="mobile-res-btn" onclick="changeResource(1,'pp',-1)">−</button><input id="pp1" type="number" value="0" onchange="G.p[1].pp=+this.value"><button type="button" class="mobile-res-btn" onclick="changeResource(1,'pp',1)">＋</button></span></div><div class="resitem"><span class="reslabel">EP</span><span class="resctl"><button type="button" class="mobile-res-btn" onclick="changeResource(1,'ep',-1)">−</button><input id="ep1" type="number" value="0" onchange="G.p[1].ep=+this.value"><button type="button" class="mobile-res-btn" onclick="changeResource(1,'ep',1)">＋</button></span></div><div class="resitem"><span class="reslabel">SEP</span><span class="resctl"><button type="button" class="mobile-res-btn" onclick="changeResource(1,'sep',-1)">−</button><input id="sep1" type="number" value="1" onchange="G.p[1].sep=+this.value"><button type="button" class="mobile-res-btn" onclick="changeResource(1,'sep',1)">＋</button></span></div><div class="resitem"><span class="reslabel">カウンター</span><span class="resctl counterctl"><button type="button" class="counterbtn" onclick="changeCounter(1,-1)">−</button><input id="counter1" class="counterinput" type="number" value="0" onchange="G.p[1].counter=+this.value"><button type="button" class="counterbtn" onclick="changeCounter(1,1)">＋</button></span></div></div></div><div class="counts">
 <div class="count decktoggle dropcount" data-p="1" data-zone="deck" onclick="toggleDeck(1)"><b>山札 ▼</b><span id="d1">0</span></div>
 <div class="count decktoggle dropcount" data-p="1" data-zone="grave" onclick="togglePile(1,'grave')"><b>墓場 ▼</b><span id="g1">0</span></div>
 <div class="count decktoggle dropcount" data-p="1" data-zone="banish" onclick="togglePile(1,'banish')"><b>消滅 ▼</b><span id="b1">0</span></div>
@@ -997,12 +1077,33 @@ function closeSideLists(){
  * - 閉じている山札を押す → 他の一覧を閉じて山札を開く
  * - 開いている山札を押す → 山札を閉じる
  */
+function positionMobileSideViewer(v,p){
+ if(!v||!isMobileLayout())return;
+ const player=document.querySelector('.player[data-player-panel="'+p+'"]');
+ const end=player?.querySelector('.endturn');
+ if(!player||!end)return;
+ const pr=player.getBoundingClientRect(),er=end.getBoundingClientRect();
+ const top=Math.max(0,er.bottom-pr.top+4);
+ v.style.top=top+'px';
+ const room=Math.max(120,pr.bottom-er.bottom-10);
+ v.style.maxHeight=Math.min(300,room)+'px';
+}
+
+function positionOpenMobileSideViewers(){
+ if(!isMobileLayout())return;
+ document.querySelectorAll('.player .deckviewer.show,.player .pileviewer.show').forEach(v=>{
+   const p=Number(v.closest('.player')?.dataset.playerPanel||0);
+   positionMobileSideViewer(v,p);
+ });
+}
+
 function toggleDeck(p){
  const v=$('deckview'+p);
  const wasOpen=v.classList.contains('show');
  closeSideLists();
  if(!wasOpen)v.classList.add('show');
  render();
+ if(!wasOpen)requestAnimationFrame(()=>positionMobileSideViewer(v,p));
 }
 
 /**
@@ -1018,6 +1119,7 @@ function togglePile(p,z){
  closeSideLists();
  if(!wasOpen)v.classList.add('show');
  render();
+ if(!wasOpen)requestAnimationFrame(()=>positionMobileSideViewer(v,p));
 }
 
 /**
@@ -1918,6 +2020,19 @@ function setTurn(p,v){
  syncSepLock(p);
 }
 
+
+/**
+ * スマホ用のTurn/PP/EP/SEP増減ボタン。
+ * PCではボタン自体を非表示にし、従来どおり数値入力を使う。
+ */
+function changeResource(p,key,d){
+ const el=$(key+p);if(!el)return;
+ if(key==='sep'&&el.disabled)return;
+ if(key==='turn'){setTurn(p,(+G.p[p].turn||0)+d);return}
+ const next=Math.max(0,(+G.p[p][key]||0)+d);
+ G.p[p][key]=next;el.value=next;
+}
+
 /**
  * ライフを指定量だけ増減する。
  */
@@ -2278,6 +2393,7 @@ function showTokens(p){
  if(!wasOpen){
    renderTokens(p);
    v.classList.add('show');
+   requestAnimationFrame(()=>positionMobileSideViewer(v,p));
  }
 }
 
@@ -3102,4 +3218,6 @@ document.addEventListener('click',e=>{
 // ここから下は、HTML読込完了後にイベント設定と初期描画を行う。
 setupDeckDrops();setupClosedPileDrops();mobileActivePlayer=0;setTab('play');
 status('準備完了');
+
+window.addEventListener('resize',()=>requestAnimationFrame(positionOpenMobileSideViewers));
 </script></body></html>
